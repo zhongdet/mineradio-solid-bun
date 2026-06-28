@@ -212,6 +212,25 @@ export function createLegacyAPIHandler(providers: MusicProvider) {
         return json(await providers.qq.getLoginInfo());
       }
 
+      // ---- QQ Login status (legacy alias) ----
+      if (pathname === "/api/qq/login/status") {
+        return json(await providers.qq.getLoginInfo());
+      }
+
+      // ---- QQ Login by cookie (legacy) ----
+      if (pathname === "/api/qq/login/cookie" && req.method === "POST") {
+        const body = await req.json();
+        try {
+          const normalized = providers.qq.normalizeQQCookieInput(body.cookie || "");
+          providers.setQQCookie(normalized);
+          providers.saveQQCookie(normalized);
+          const info = await providers.qq.getLoginInfo();
+          return json({ ok: true, loggedIn: !!info.loggedIn, info });
+        } catch (e: any) {
+          return json({ ok: false, loggedIn: false, error: e.message }, 400);
+        }
+      }
+
       // ---- QQ Cookie normalize ----
       if (pathname === "/api/qq/cookie/normalize" && req.method === "POST") {
         const body = await req.json();

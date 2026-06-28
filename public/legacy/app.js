@@ -18357,10 +18357,10 @@ function updateFxInputs() {
   setRange('fx-bgfade', fx.bgFade);
   updateLyricGlowControls();
   // 同步开关
-  document.getElementById('t-float').classList.toggle('on', fx.floatLayer);
   var floatToggle = document.getElementById('t-float');
   if (floatToggle) floatToggle.classList.toggle('on', fx.floatLayer);
-  document.getElementById('t-cinema').classList.toggle('on', fx.cinema);
+  var cinemaToggle = document.getElementById('t-cinema');
+  if (cinemaToggle) cinemaToggle.classList.toggle('on', fx.cinema);
   var lyricGlowToggle = document.getElementById('t-lyricGlow');
   if (lyricGlowToggle) lyricGlowToggle.classList.toggle('on', fx.lyricGlow);
   var lyricGlowBeatToggle = document.getElementById('t-lyricGlowBeat');
@@ -18369,8 +18369,10 @@ function updateFxInputs() {
   if (lyricGlowParticlesToggle) lyricGlowParticlesToggle.classList.toggle('on', fx.lyricGlowParticles);
   var lyricCameraLockToggle = document.getElementById('t-lyricCameraLock');
   if (lyricCameraLockToggle) lyricCameraLockToggle.classList.toggle('on', fx.lyricCameraLock);
-  document.getElementById('t-bloom').classList.toggle('on', fx.bloom);
-  document.getElementById('t-edge').classList.toggle('on', fx.edge);
+  var bloomToggle = document.getElementById('t-bloom');
+  if (bloomToggle) bloomToggle.classList.toggle('on', fx.bloom);
+  var edgeToggle = document.getElementById('t-edge');
+  if (edgeToggle) edgeToggle.classList.toggle('on', fx.edge);
   var desktopLyricsToggle = document.getElementById('t-desktopLyrics');
   if (desktopLyricsToggle) desktopLyricsToggle.classList.toggle('on', fx.desktopLyrics);
   var desktopLyricsClickToggle = document.getElementById('t-desktopLyricsClickThrough');
