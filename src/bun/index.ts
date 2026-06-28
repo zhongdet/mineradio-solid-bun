@@ -20,6 +20,8 @@ try {
     title: "Mineradio",
     url: devUrl,
     frame: {
+      x: 0,
+      y: 0,
       width: 1280,
       height: 800,
     },
@@ -34,6 +36,8 @@ try {
     title: "Mineradio",
     url,
     frame: {
+      x: 0,
+      y: 0,
       width: 1280,
       height: 800,
     },

@@ -1,23 +1,11 @@
 import { Component, onMount } from "solid-js";
 import { checkHealth } from "./lib/api";
 import {
-  Splash,
-  SearchArea,
-  TopRight,
-  EmptyHome,
-  Background,
-  BottomBar,
-  FxPanel,
-  PlaylistPanel,
-  StageLyrics,
-  GestureHud,
-  ThumbWrap,
-  VisualGuide,
-  TrialBanner,
-  StatusChips,
-  Overlays,
-  HiddenInputs,
-} from "./components/LegacyComponents";
+  Splash, SearchArea, TopRight, EmptyHome, Background,
+  BottomBar, FxPanel, PlaylistPanel, StageLyrics,
+  GestureHud, ThumbWrap, VisualGuide, TrialBanner,
+  StatusChips, Overlays, HiddenInputs,
+} from "./components/index";
 
 const App: Component = () => {
   onMount(async () => {
@@ -27,7 +15,14 @@ const App: Component = () => {
       console.warn("[Mineradio] Backend API not reachable. Some features may not work.");
     }
 
-    // Load legacy JS after SolidJS has rendered all DOM elements
+    // Initialize Three.js visuals after Solid has rendered the DOM
+    if (typeof window.__initMineradioVisuals === "function") {
+      try { window.__initMineradioVisuals(); } catch (e) {
+        console.warn("[Mineradio] Visuals init failed:", e);
+      }
+    }
+
+    // Load legacy JS after visuals are ready
     const script = document.createElement("script");
     script.src = "/legacy/app.js";
     script.onload = () => {
