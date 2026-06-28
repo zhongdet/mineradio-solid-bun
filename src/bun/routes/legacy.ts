@@ -201,16 +201,25 @@ export function createLegacyAPIHandler(providers: MusicProvider) {
         };
         if (resp.headers.get("Content-Range")) respHeaders["Content-Range"] = resp.headers.get("Content-Range")!;
         if (resp.headers.get("Content-Length")) respHeaders["Content-Length"] = resp.headers.get("Content-Length")!;
-        return new Response(resp.body, { headers: respHeaders });
+        // Forward original status (206 for Range, 200 otherwise) so the browser
+        // correctly interprets partial-content responses — otherwise the audio
+        // buffer gets confused, stutters, and resets to 00:00.
+        const status = resp.status;
+        return new Response(resp.body, { status, headers: respHeaders });
       }
 
       // ---- Cover proxy ----
       if (pathname === "/api/cover") {
         const coverUrl = url.searchParams.get("url") || "";
         if (!coverUrl) return json({ error: "URL_REQUIRED" }, 400);
-        const resp = await fetch(coverUrl, {
-          headers: { "User-Agent": "Mozilla/5.0", Referer: "https://y.qq.com/" },
-        });
+        // Use per-domain Referer so Netease CDN doesn't block the request
+        const coverHeaders: Record<string, string> = { "User-Agent": "Mozilla/5.0" };
+        try {
+          const host = new URL(coverUrl).hostname.toLowerCase();
+          if (host.includes("qq.com") || host.includes("qpic.cn")) coverHeaders["Referer"] = "https://y.qq.com/";
+          else coverHeaders["Referer"] = "https://music.163.com/";
+        } catch {}
+        const resp = await fetch(coverUrl, { headers: coverHeaders });
         return new Response(resp.body, {
           headers: {
             "Content-Type": resp.headers.get("Content-Type") || "image/jpeg",
