@@ -108,15 +108,38 @@ export class NeteaseProvider {
   async search(keywords: string, type = 1, limit = 30): Promise<SearchResult> {
     const r = await search({ keywords, type, limit, cookie: this.nc() });
     const body = r.body as any;
-    const songs = (body.result?.songs || []).map(mapSong);
+    let songs = (body.result?.songs || []).map(mapSong);
+    // Backfill missing covers via song_detail (cloudsearch may omit picUrl)
+    songs = await this.backfillCover(songs);
     return { songs, total: body.result?.songCount };
   }
 
   async cloudsearch(keywords: string, type = 1, limit = 30): Promise<SearchResult> {
     const r = await cloudsearch({ keywords, type, limit, cookie: this.nc() });
     const body = r.body as any;
-    const songs = (body.result?.songs || []).map(mapSong);
+    let songs = (body.result?.songs || []).map(mapSong);
+    // Backfill missing covers via song_detail (cloudsearch may omit picUrl)
+    songs = await this.backfillCover(songs);
     return { songs, total: body.result?.songCount };
+  }
+
+  private async backfillCover(songs: Song[]): Promise<Song[]> {
+    const missing = songs.filter(s => !s.cover).map(s => s.id);
+    if (!missing.length) return songs;
+    const getPic = (s: any): string =>
+      (s.al?.picUrl) || (s.album?.picUrl) || "";
+    try {
+      const dd = await song_detail({ ids: missing.join(","), cookie: this.nc() });
+      const songsArr = (dd.body as any)?.songs || [];
+      const idToPic: Record<string, string> = {};
+      songsArr.forEach((s: any) => {
+        const pic = getPic(s);
+        if (pic) idToPic[s.id] = pic;
+      });
+      return songs.map(s => (s.cover ? s : { ...s, cover: idToPic[s.id] || "" }));
+    } catch {
+      return songs;
+    }
   }
 
   // Song
