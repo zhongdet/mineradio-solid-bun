@@ -1,4 +1,6 @@
 // Legacy API route handler — mirrors the original server.js endpoint paths
+import * as fs from "fs";
+import * as path from "path";
 import type { LoginInfo } from "../providers/types";
 import { MusicProvider } from "../providers";
 
@@ -11,6 +13,17 @@ function json(data: any, status = 200): Response {
       "Cache-Control": "no-store, no-cache, must-revalidate",
     },
   });
+}
+
+const BEATMAP_CACHE_DIR = process.env.MINERADIO_BEAT_CACHE_DIR || "D:\\MineradioCache\\beatmaps";
+
+function beatCacheRootInfo() {
+  const dir = BEATMAP_CACHE_DIR ? path.resolve(BEATMAP_CACHE_DIR) : "";
+  const root = dir ? path.parse(dir).root : "";
+  const drive = root ? root.replace(/[\\\/]+$/, "").toUpperCase() : "";
+  const allowed = !!root && !/^C:$/i.test(drive);
+  const available = allowed && fs.existsSync(root);
+  return { dir, root, drive, allowed, available };
 }
 
 export function createLegacyAPIHandler(providers: MusicProvider) {
@@ -261,7 +274,16 @@ export function createLegacyAPIHandler(providers: MusicProvider) {
       }
 
       // ---- Beatmap cache stubs ----
-      if (pathname === "/api/beatmap/cache/status") return json({ enabled: false, dir: "", allowed: false, available: false, count: 0 });
+      if (pathname === "/api/beatmap/cache/status") {
+        const info = beatCacheRootInfo();
+        return json({
+          enabled: info.allowed && info.available,
+          dir: info.dir,
+          drive: info.drive,
+          reason: !info.allowed ? "C_DRIVE_DISABLED" : (!info.available ? "TARGET_DRIVE_UNAVAILABLE" : ""),
+          mode: info.allowed && info.available ? "disk" : "memory-only",
+        });
+      }
       if (pathname === "/api/beatmap/cache") return json({ ok: false, error: "NO_CACHE" });
 
       // ---- Podcast (Netease) ----
