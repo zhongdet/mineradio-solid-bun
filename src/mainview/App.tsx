@@ -4,7 +4,7 @@ import {
   Splash, SearchArea, TopRight, EmptyHome, Background,
   BottomBar, FxPanel, PlaylistPanel, StageLyrics,
   GestureHud, ThumbWrap, VisualGuide, TrialBanner,
-  StatusChips, Overlays, HiddenInputs,
+  StatusChips, Overlays, HiddenInputs, Modals,
 } from "./components/index";
 
 const App: Component = () => {
@@ -57,6 +57,7 @@ const App: Component = () => {
       <TrialBanner />
       <StatusChips />
       <Overlays />
+      <Modals />
       <VisualGuide />
     </div>
   );

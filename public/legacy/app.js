@@ -20371,12 +20371,14 @@ async function refreshQr() {
     qrKey = k.key;
     var q = await apiJson('/api/login/qr/create?key=' + encodeURIComponent(qrKey));
     if (!q.img) throw new Error('生成二维码失败');
-    document.getElementById('qr-img').src = q.img;
-    document.getElementById('qr-status').textContent = '请使用网易云音乐 App 扫码';
+    var qrImg = document.getElementById('qr-img');
+    var qrStatus = document.getElementById('qr-status');
+    if (qrImg) qrImg.src = q.img;
+    if (qrStatus) qrStatus.textContent = '请使用网易云音乐 App 扫码';
     startQrPoll();
   } catch (e) {
-    document.getElementById('qr-status').textContent = '出错: ' + e.message;
-    document.getElementById('qr-status').className = 'fail';
+    var qrStatus = document.getElementById('qr-status');
+    if (qrStatus) { qrStatus.textContent = '出错: ' + e.message; qrStatus.className = 'fail'; }
   }
 }
 function startQrPoll() { if (qrPollTimer) clearInterval(qrPollTimer); qrPollTimer = setInterval(checkQr, 2000); }

@@ -208,26 +208,46 @@ export class NeteaseProvider {
   // Login
   async loginQRKey(): Promise<any> {
     const r = await login_qr_key({ cookie: this.nc() });
-    return r.body;
+    const d = r.body?.data || {};
+    return { key: d.unikey, code: r.body?.code };
   }
 
   async loginQRCreate(key: string): Promise<any> {
     const r = await login_qr_create({ key, qrimg: true, cookie: this.nc() });
-    return r.body;
+    const d = r.body?.data || {};
+    return { img: d.qrimg, key: d.unikey, code: r.body?.code };
   }
 
-  async loginQRCheck(key: string): Promise<{ body: any; cookie: string }> {
+  async loginQRCheck(key: string): Promise<any> {
     const r = await login_qr_check({ key, cookie: this.nc() });
-    if (r.body.code === 803 || r.body.code === 800) {
-      const c = (r.headers as Headers).get("set-cookie") || "";
-      this.saveCookieFn(c);
+    const data = r.body || {};
+    if (data.code === 803 || data.code === 800) {
+      const c = data.cookie || "";
+      if (c) {
+        data.loggedIn = true;
+        data.hasCookie = true;
+        this.saveCookieFn(c);
+      }
     }
-    return { body: r.body, cookie: this.cookie };
+    return data;
   }
 
   async loginStatus(): Promise<any> {
     const r = await login_status({ cookie: this.nc() });
-    return r.body;
+    const raw = r.body?.data || r.body || {};
+    const profile = raw.profile || {};
+    return {
+      loggedIn: raw.code === 200 && !!profile.userId,
+      account: raw.account || null,
+      profile: profile,
+      nickname: profile.nickname || "",
+      avatarUrl: profile.avatarUrl || "",
+      vipType: profile.vipType ?? 0,
+      vipLevel: profile.vipLevel || (profile.vipType >= 1 ? "vip" : "none"),
+      isVip: !!(profile.vipType >= 1),
+      isSvip: profile.vipType === 11 || profile.vipLevel === "svip",
+      vipLabel: profile.vipType >= 1 ? (profile.vipType === 11 ? "SVIP" : "VIP") : "无VIP",
+    };
   }
 
   async logout(): Promise<any> {
