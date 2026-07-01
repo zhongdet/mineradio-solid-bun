@@ -10,9 +10,9 @@ export type RPCMethod =
   | "like" | "likelist" | "song_like_check"
   | "playlist_tracks" | "playlist_track_add" | "playlist_create"
   | "playlist_detail" | "playlist_track_all"
-  | "personalized" | "recommend_resource" | "recommend_songs"
+  | "personalized" | "personalized_playlist" | "recommend_resource" | "recommend_songs"
   | "artist_detail" | "artist_top_song" | "artist_songs"
-  | "dj_detail" | "dj_program" | "dj_hot" | "dj_sublist"
+  | "dj_detail" | "dj_program" | "dj_hot" | "dj_sublist" | "dj_search"
   | "user_audio" | "dj_paygift" | "record_recent_voice" | "sati_resource_sub_list"
   | "comment_music"
   | "saveCookie" | "getCookie" | "saveQQCookie" | "getQQCookie";

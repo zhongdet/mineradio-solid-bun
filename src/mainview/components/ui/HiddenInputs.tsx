@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Component } from "solid-js";
 
-export const HiddenInputs: Component = () => (
+const HiddenInputs: Component = () => (
   <>
     <input type="file" id="file-input" accept=".mp3,.flac,.wav,.ogg,.m4a,.jpg,.jpeg,.png,.webp" multiple style="display:none" />
     <input type="file" id="background-image-input" accept=".jpg,.jpeg,.png,.webp,.mp4,.webm,.mov,image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime" style="display:none" />
@@ -11,3 +11,5 @@ export const HiddenInputs: Component = () => (
     <canvas id="login-guide-canvas" aria-hidden="true"></canvas>
   </>
 );
+
+export default HiddenInputs;

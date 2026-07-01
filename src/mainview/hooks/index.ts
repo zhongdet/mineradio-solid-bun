@@ -1,0 +1,14 @@
+// Barrel export for all hooks
+export { useAudioPlayback } from "./useAudioPlayback";
+export { useBeatDetection } from "./useBeatDetection";
+export { useSearchHook } from "./useSearch";
+export { useAuthHook } from "./useAuth";
+export { useHotkeys } from "./useHotkeys";
+export { usePerformance } from "./usePerformance";
+export { useHomeDiscover } from "./useHomeDiscover";
+export { useShelf } from "./useShelf";
+export { useLyricsHook } from "./useLyrics";
+export { usePlaylists } from "./usePlaylists";
+export { useCoverCrop } from "./useCoverCrop";
+export { useSplashAnimation } from "./useSplashAnimation";
+export { useVisualEngine } from "./useVisualEngine";

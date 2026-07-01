@@ -6,6 +6,8 @@ await startCombinedServer();
 const port = getPort();
 const url = `http://127.0.0.1:${port}`;
 
+const isHidden = process.env.HIDDEN === "1";
+
 console.log(`[Mineradio] App URL: ${url}`);
 
 // Dev server check for HMR
@@ -26,6 +28,7 @@ try {
       height: 800,
     },
     titleBarStyle: "hidden",
+    hidden: isHidden,
   });
 
   // Keep reference to avoid GC
@@ -42,6 +45,7 @@ try {
       height: 800,
     },
     titleBarStyle: "hidden",
+    hidden: isHidden,
   });
 
   (globalThis as any).__mainWindow = mainWindow;

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Component } from "solid-js";
 
-export const GestureHud: Component = () => (
+const GestureHud: Component = () => (
   <>
     <div id="gesture-hud" class="gesture-hud">
       <div>手势：<b id="gesture-label">待命</b></div>
@@ -12,3 +12,5 @@ export const GestureHud: Component = () => (
     <canvas id="hand-canvas"></canvas>
   </>
 );
+
+export default GestureHud;
