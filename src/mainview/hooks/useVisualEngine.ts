@@ -643,6 +643,64 @@ export function useVisualEngine() {
   let mouseWorld = { x: 0, y: 0 };
   let mouseActive = false;
 
+  // Raycaster mouse coordinate mapping (original algorithm)
+  let particlePointerRay: any = null;
+  let particlePointerNdc: any = null;
+  let particlePointerPlane: any = null;
+  let particlePointerPlanePoint: any = null;
+  let particlePointerPlaneNormal: any = null;
+  let particlePointerWorldHit: any = null;
+  let particlePointerLocalHit: any = null;
+  let particlePointerQuat: any = null;
+
+  // Queue-based frame update for performance
+  let particlePointerFrameDirty = false;
+  let particlePointerFrameNdcX = 0;
+  let particlePointerFrameNdcY = 0;
+
+  function particleLocalPointFromNdc(ndcX: number, ndcY: number, out: { x: number; y: number }): boolean {
+    if (!particlePointerRay || !camera) return false;
+    particlePointerNdc.set(ndcX, ndcY);
+    particlePointerRay.setFromCamera(particlePointerNdc, camera);
+    if (particles) {
+      particles.updateMatrixWorld(true);
+      particles.getWorldPosition(particlePointerPlanePoint);
+      particles.getWorldQuaternion(particlePointerQuat);
+      particlePointerPlaneNormal.set(0, 0, 1).applyQuaternion(particlePointerQuat).normalize();
+      if (Math.abs(particlePointerPlaneNormal.dot(particlePointerRay.ray.direction)) < 0.16) return false;
+      particlePointerPlane.setFromNormalAndCoplanarPoint(particlePointerPlaneNormal, particlePointerPlanePoint);
+      if (particlePointerRay.ray.intersectPlane(particlePointerPlane, particlePointerWorldHit)) {
+        out.x = particlePointerWorldHit.x;
+        out.y = particlePointerWorldHit.y;
+        particles.worldToLocal(out);
+        return isFinite(out.x) && isFinite(out.y) && Math.abs(out.x) < 8.5 && Math.abs(out.y) < 8.5;
+      }
+    }
+    particlePointerPlaneNormal.set(0, 0, 1);
+    particlePointerPlane.set(particlePointerPlaneNormal, 0);
+    if (particlePointerRay.ray.intersectPlane(particlePointerPlane, particlePointerWorldHit)) {
+      out.x = particlePointerWorldHit.x;
+      out.y = particlePointerWorldHit.y;
+      return isFinite(out.x) && isFinite(out.y) && Math.abs(out.x) < 8.5 && Math.abs(out.y) < 8.5;
+    }
+    return false;
+  }
+
+  function updateParticlePointerFrame() {
+    if (!particlePointerFrameDirty) return;
+    particlePointerFrameDirty = false;
+    const hit = particleLocalPointFromNdc(particlePointerFrameNdcX, particlePointerFrameNdcY, particlePointerLocalHit);
+    if (hit) {
+      mouseWorld.x = particlePointerLocalHit.x;
+      mouseWorld.y = particlePointerLocalHit.y;
+      mouseActive = true;
+    } else {
+      mouseWorld.x = -999;
+      mouseWorld.y = -999;
+      mouseActive = false;
+    }
+  }
+
   // Ripple system
   const RIPPLE_MAX_LOCAL = RIPPLE_MAX;
   const rippleData = new Float32Array(RIPPLE_MAX_LOCAL * 4);
@@ -704,6 +762,16 @@ export function useVisualEngine() {
     renderer.domElement.style.width = "100%";
     renderer.domElement.style.height = "100%";
     renderer.domElement.tabIndex = 0;
+
+    // Raycaster mouse coordinate mapping (original algorithm)
+    particlePointerRay = new THREE.Raycaster();
+    particlePointerNdc = new THREE.Vector2();
+    particlePointerPlane = new THREE.Plane();
+    particlePointerPlanePoint = new THREE.Vector3();
+    particlePointerPlaneNormal = new THREE.Vector3();
+    particlePointerWorldHit = new THREE.Vector3();
+    particlePointerLocalHit = new THREE.Vector3();
+    particlePointerQuat = new THREE.Quaternion();
 
     // Initialize 3D shelf
     shelf3d = useShelf3D(scene, camera);
@@ -815,7 +883,7 @@ export function useVisualEngine() {
       uHandActive: { value: 0 },
       uGestureGrip: { value: 0 },
       uPixel: { value: renderer.getPixelRatio() },
-      uAlpha: { value: 0 },
+      uAlpha: { value: 1.0 },
       uParticleDim: { value: 1 },
       uFloatAlpha: { value: 0 },
       uLoading: { value: 0 },
@@ -841,16 +909,13 @@ export function useVisualEngine() {
 
     // Pointer tracking
     const handlePointerMove = (e: MouseEvent) => {
-      if (uniforms) {
-        uniforms.uMouseXY.value.set(
-          (e.clientX / window.innerWidth) * 2 - 1,
-          -(e.clientY / window.innerHeight) * 2 + 1,
-        );
-      }
-      mouseWorld.x = (e.clientX / window.innerWidth) * 2 - 1;
-      mouseWorld.y = -(e.clientY / window.innerHeight) * 2 + 1;
-      mouseActive = true;
-      visual.set("pointerTarget", { x: mouseWorld.x * 0.3, y: mouseWorld.y * 0.2 });
+      // Queue raycaster frame update (original algorithm)
+      const mx = (e.clientX / window.innerWidth) * 2 - 1;
+      const my = -(e.clientY / window.innerHeight) * 2 + 1;
+      particlePointerFrameNdcX = mx;
+      particlePointerFrameNdcY = my;
+      particlePointerFrameDirty = true;
+      visual.set("pointerTarget", { x: mx * 0.3, y: my * 0.2 });
 
       // Search area peek logic (match original behavior)
       const sa = document.getElementById("search-area");
@@ -1617,6 +1682,9 @@ export function useVisualEngine() {
     function animate() {
       animFrameId = requestAnimationFrame(animate);
 
+      // Update queued particle pointer frame (Raycaster-based, original algorithm)
+      updateParticlePointerFrame();
+
       const now = performance.now();
       if (perf.shouldSkipFrame()) return;
       const dt = Math.min((now - prevTime) / 1000, 0.05);
@@ -1648,11 +1716,6 @@ export function useVisualEngine() {
       if (analyser && audio.state.audioReady && audioEl && !audioEl.paused && localFrequencyData && localTimeDomainData) {
         if (audio.state.audioCtx && audio.state.audioCtx.state === "suspended") {
           audio.state.audioCtx.resume().catch(() => {});
-        }
-
-        // Fade in alpha when audio starts playing
-        if (uniforms.uAlpha.value < 0.5) {
-          uniforms.uAlpha.value = Math.min(1.0, uniforms.uAlpha.value + dt * 0.8);
         }
 
         analyser.getByteFrequencyData(localFrequencyData as Uint8Array<ArrayBuffer>);
@@ -1770,14 +1833,6 @@ export function useVisualEngine() {
           lyricSunAvg: visual.state.lyricSunAvg * 0.995,
           lyricSunPeak: Math.max(0.48, visual.state.lyricSunPeak * 0.997),
         });
-
-        // Interpolate particle alpha toward target (homepage wallpaper)
-        const alphaTarget = visual.state.particleAlphaTarget;
-        if (alphaTarget > 0.01) {
-          uniforms.uAlpha.value += (alphaTarget - uniforms.uAlpha.value) * Math.min(1, dt * 1.2);
-        } else if (uniforms.uAlpha.value > 0.01) {
-          uniforms.uAlpha.value *= 0.92;
-        }
       }
 
       // Final bass/mid/treble with intensity scaling
@@ -1823,6 +1878,7 @@ export function useVisualEngine() {
       if (uniforms.uColorMixT.value < 1.0) {
         uniforms.uColorMixT.value = Math.min(1.0, uniforms.uColorMixT.value + dt * 2.5);
       }
+      uniforms.uMouseXY.value.set(mouseWorld.x, mouseWorld.y);
       uniforms.uMouseActive.value = mouseActive ? 1 : 0;
 
       // Particle dim
