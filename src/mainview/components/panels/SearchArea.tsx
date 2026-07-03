@@ -4,6 +4,7 @@ import { useSearch } from "../../stores/searchStore";
 import { usePlayback } from "../../stores/playbackStore";
 import { useUi } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
+import { proxyImageUrl } from "../../lib/api";
 
 const SearchArea: Component = () => {
   const search = useSearch();
@@ -11,6 +12,18 @@ const SearchArea: Component = () => {
   const ui = useUi();
   const settings = useSettings();
   const [query, setQuery] = createSignal("");
+  let searchTimer: ReturnType<typeof setTimeout> | null = null;
+
+  function handleInput(value: string) {
+    setQuery(value);
+    if (searchTimer) clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+      const q = value.trim();
+      if (q) {
+        window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: search.state.mode } }));
+      }
+    }, 300);
+  }
 
   const modes = [
     { key: "song", label: "All" },
@@ -35,6 +48,7 @@ const SearchArea: Component = () => {
   });
   onCleanup(() => {
     if (homeSearchHandler) window.removeEventListener("mineradio-home-search", homeSearchHandler);
+    if (searchTimer) clearTimeout(searchTimer);
   });
 
   function handleSubmit(e: Event) {
@@ -80,14 +94,17 @@ const SearchArea: Component = () => {
     }
   }
 
+  function providerKey(song: any): string {
+    if (song && (song.provider === "qq" || song.source === "qq" || song.type === "qq")) return "qq";
+    return "netease";
+  }
+
   function sourceTag(song: any): string {
-    if (song.provider === "qq" || song.source === "qq" || song.type === "qq") return "QQ";
-    return "";
+    return providerKey(song) === "qq" ? "QQ" : "NE";
   }
 
   function sourceClass(song: any): string {
-    if (song.provider === "qq" || song.source === "qq" || song.type === "qq") return "qq-source";
-    return "";
+    return providerKey(song) + "-source";
   }
 
   return (
@@ -104,7 +121,7 @@ const SearchArea: Component = () => {
             autocomplete="off"
             spellcheck={false}
             value={query()}
-            onInput={(e) => setQuery(e.currentTarget.value)}
+            onInput={(e) => handleInput(e.currentTarget.value)}
           />
         </form>
 
@@ -140,7 +157,7 @@ const SearchArea: Component = () => {
                 <div classList={{ "search-result": true, [sourceClass(song)]: !!sourceClass(song) }}>
                   <div style={{ display: "flex", "align-items": "center", gap: "12px", flex: "1", "min-width": "0" }} onClick={() => playSearchResult(idx())}>
                     <img
-                      src={song.cover || ""}
+                      src={proxyImageUrl(song.cover)}
                       alt=""
                       loading="lazy"
                       onError={(e) => { (e.target as HTMLElement).style.opacity = "0.2"; }}
@@ -176,7 +193,7 @@ const SearchArea: Component = () => {
               {(podcast: any) => (
                 <div class="search-result">
                   <div style={{ display: "flex", "align-items": "center", gap: "12px", flex: "1", "min-width": "0" }}>
-                    <img src={podcast.cover || ""} alt="" loading="lazy" style={{ width: "44px", height: "44px", "border-radius": "4px", "object-fit": "cover" }} />
+                    <img src={proxyImageUrl(podcast.cover)} alt="" loading="lazy" style={{ width: "44px", height: "44px", "border-radius": "4px", "object-fit": "cover" }} />
                     <div class="search-result-info">
                       <div class="search-result-title">{podcast.name}</div>
                       <div class="search-result-meta">{podcast.djName}</div>

@@ -97,8 +97,12 @@ export function useSettings() {
       document.body.classList.toggle("diy-mode", next);
       document.body.classList.toggle("simple-mode", !next);
       if (!next) {
-        // Close panels and controls in simple mode
         setSettings("immersiveMode", false);
+        document.body.classList.remove("fx-panel-show", "playlist-pinned");
+        const fxPanel = document.getElementById("fx-panel");
+        const plPanel = document.getElementById("playlist-panel");
+        if (fxPanel) fxPanel.classList.remove("show");
+        if (plPanel) plPanel.classList.remove("pinned");
       }
     },
     togglePlaylistPanelPinned: () => {

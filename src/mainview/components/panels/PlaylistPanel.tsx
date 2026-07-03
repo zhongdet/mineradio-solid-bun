@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { proxyImageUrl } from "../../lib/api";
 import { Component, createSignal, onMount, onCleanup, For, Show, createMemo } from "solid-js";
 import { usePlayback } from "../../stores/playbackStore";
 import { useSettings } from "../../stores/settingsStore";
@@ -101,7 +102,7 @@ const PlaylistPanel: Component = () => {
                   classList={{ "queue-item": true, now: idx() === playback.state.currentIdx }}
                   onClick={() => playSong(song, idx())}
                 >
-                  <img src={song.cover} alt="" loading="lazy" />
+                  <img src={proxyImageUrl(song.cover)} alt="" loading="lazy" />
                   <div style={{ "flex": "1", "min-width": "0" }}>
                     <div class="qi-name">{song.name}</div>
                     <div class="qi-sub">{song.artist}</div>
@@ -126,7 +127,7 @@ const PlaylistPanel: Component = () => {
                   <For each={group.items}>
                     {(pl) => (
                       <div class="pl-card" onClick={() => loadPlaylist(pl)}>
-                        <img src={pl.cover || ""} alt="" loading="lazy" />
+                        <img src={proxyImageUrl(pl.cover || "")} alt="" loading="lazy" />
                         <div style={{ "flex": "1", "min-width": "0" }}>
                           <div class="pl-name">
                             {pl.name}

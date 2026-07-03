@@ -1,4 +1,5 @@
 import { createEffect } from "solid-js";
+import { loadBindings, HOTKEY_STORE_KEY } from "../components/panels/HotkeyModal";
 
 const HOTKEY_ACTIONS = [
   { key: 'togglePlay', label: '播放 / 暂停', category: '播放', local: 'Space', global: 'Ctrl+Alt+Space' },
@@ -6,9 +7,19 @@ const HOTKEY_ACTIONS = [
   { key: 'nextTrack', label: '下一首', category: '播放', local: 'ArrowRight', global: 'Ctrl+Alt+ArrowRight' },
   { key: 'volumeUp', label: '音量增加', category: '音量', local: 'ArrowUp', global: 'Ctrl+Alt+ArrowUp' },
   { key: 'volumeDown', label: '音量降低', category: '音量', local: 'ArrowDown', global: 'Ctrl+Alt+ArrowDown' },
+  { key: 'goHome', label: '回到 Home', category: '导航', local: 'Home', global: '' },
   { key: 'toggleFullscreen', label: '全屏', category: '窗口', local: 'KeyF', global: 'Ctrl+Alt+KeyF' },
+  { key: 'exitOrClose', label: '退出/关闭', category: '窗口', local: 'Escape', global: '' },
+  { key: 'toggleLyricsPanel', label: '歌词面板', category: '歌词', local: 'KeyL', global: '' },
+  { key: 'toggleFxPanel', label: '效果面板', category: '视觉', local: 'KeyP', global: '' },
+  { key: 'toggleImmersive', label: '沉浸模式', category: '窗口', local: 'KeyI', global: '' },
   { key: 'toggleDesktopLyrics', label: '桌面歌词', category: '歌词', local: 'Alt+KeyL', global: 'Ctrl+Alt+KeyL' },
 ];
+
+function getLocalBinding(actionKey: string): string {
+  const bindings = loadBindings();
+  return bindings[actionKey] || HOTKEY_ACTIONS.find(a => a.key === actionKey)?.local || '';
+}
 
 export function useHotkeys() {
   let captureState: string | null = null;
@@ -35,17 +46,21 @@ export function useHotkeys() {
   }
 
   function handleKeyDown(event: KeyboardEvent) {
-    // If capture state is active, don't handle global hotkeys
     if (captureState) return;
 
+    const target = event.target as HTMLElement;
+    const isInput = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+
     for (const action of HOTKEY_ACTIONS) {
-      if (isHotkeyMatch(event, action.local)) {
+      const localBinding = getLocalBinding(action.key);
+      if (isHotkeyMatch(event, localBinding)) {
+        const rawKey = localBinding.split('+').pop() || '';
+        if (isInput && !['Space', 'Escape'].includes(rawKey)) continue;
         event.preventDefault();
         dispatchHotkey(action.key);
         return;
       }
-      // Check global hotkeys
-      if ((event.ctrlKey || event.metaKey) && isHotkeyMatch(event, action.global)) {
+      if ((event.ctrlKey || event.metaKey) && action.global && isHotkeyMatch(event, action.global)) {
         event.preventDefault();
         dispatchHotkey(action.key);
         return;
@@ -56,19 +71,11 @@ export function useHotkeys() {
   function dispatchHotkey(actionKey: string) {
     switch (actionKey) {
       case "togglePlay":
-        // Will be called from the component via the audio playback hook
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
       case "prevTrack":
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
       case "nextTrack":
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
       case "volumeUp":
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
       case "volumeDown":
+      case "toggleDesktopLyrics":
         window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
         break;
       case "toggleFullscreen":
@@ -78,7 +85,19 @@ export function useHotkeys() {
           document.exitFullscreen().catch(() => {});
         }
         break;
-      case "toggleDesktopLyrics":
+      case "goHome":
+        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
+        break;
+      case "exitOrClose":
+        if (document.fullscreenElement) {
+          document.exitFullscreen().catch(() => {});
+        } else {
+          window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
+        }
+        break;
+      case "toggleLyricsPanel":
+      case "toggleFxPanel":
+      case "toggleImmersive":
         window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
         break;
     }

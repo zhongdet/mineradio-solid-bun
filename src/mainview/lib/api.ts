@@ -2,6 +2,19 @@
 const apiPort = new URLSearchParams(location.search).get("apiPort");
 export const API_BASE = apiPort ? `http://127.0.0.1:${apiPort}` : window.location.origin;
 
+// Proxy remote image URLs through the server to avoid CORS issues
+export function proxyImageUrl(url: string): string {
+  if (!url) return "";
+  try {
+    const u = new URL(url);
+    if (u.origin === window.location.origin) return url;
+    const apiBase = apiPort ? `http://127.0.0.1:${apiPort}` : window.location.origin;
+    return `${apiBase}/api/proxy-image?url=${encodeURIComponent(url)}`;
+  } catch {
+    return url;
+  }
+}
+
 export type RPCMethod =
   | "search" | "cloudsearch" | "song_detail" | "song_url" | "song_url_v1"
   | "lyric" | "lyric_new"

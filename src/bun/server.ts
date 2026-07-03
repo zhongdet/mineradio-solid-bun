@@ -129,10 +129,47 @@ export async function startCombinedServer() {
         return json({ ok: true, port: serverPort });
       }
 
+      // Desktop lyrics overlay state
+      if (pathname === "/api/desktop-lyrics-state") {
+        const state = (globalThis as any).__getOverlayState?.() || { enabled: false };
+        return json(state);
+      }
+      if (pathname === "/api/desktop-lyrics-update" && req.method === "POST") {
+        try {
+          const patch = await req.json();
+          (globalThis as any).__setOverlayState?.(patch);
+          return json({ ok: true });
+        } catch {
+          return json({ error: "invalid body" }, 400);
+        }
+      }
+
       // RPC
       if (pathname === "/api/rpc" && req.method === "POST") {
         const body = await req.json();
         return handleRPC(body);
+      }
+
+      // Image proxy: /api/proxy-image?url=... — fetches remote images and returns with CORS headers
+      if (pathname === "/api/proxy-image") {
+        const imageUrl = url.searchParams.get("url") || "";
+        if (!imageUrl) return new Response("Missing url param", { status: 400 });
+        try {
+          const resp = await fetch(imageUrl);
+          if (!resp.ok) return new Response("Image fetch failed", { status: resp.status });
+          const buffer = await resp.arrayBuffer();
+          const contentType = resp.headers.get("content-type") || "image/jpeg";
+          return new Response(buffer, {
+            headers: {
+              "Content-Type": contentType,
+              "Access-Control-Allow-Origin": "*",
+              "Cache-Control": "public, max-age=86400",
+            },
+          });
+        } catch (err) {
+          console.warn("Image proxy error:", err);
+          return new Response("Proxy error", { status: 502 });
+        }
       }
 
       // Legacy API

@@ -12,3 +12,5 @@ export { usePlaylists } from "./usePlaylists";
 export { useCoverCrop } from "./useCoverCrop";
 export { useSplashAnimation } from "./useSplashAnimation";
 export { useVisualEngine } from "./useVisualEngine";
+export { useIdleGuide } from "./useIdleGuide";
+export { useDesktopLyrics } from "./useDesktopLyrics";

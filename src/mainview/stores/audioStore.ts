@@ -55,8 +55,10 @@ export function useAudio() {
       const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
       const analyser = ctx.createAnalyser();
       analyser.fftSize = FFT_SIZE;
+      analyser.smoothingTimeConstant = 0.58;
       const beatAnalyser = ctx.createAnalyser();
       beatAnalyser.fftSize = BEAT_FFT_SIZE;
+      beatAnalyser.smoothingTimeConstant = 0.10;
       const gainNode = ctx.createGain();
       gainNode.connect(ctx.destination);
       analyser.connect(gainNode);
@@ -65,6 +67,7 @@ export function useAudio() {
         try {
           const source = ctx.createMediaElementSource(audio.audio);
           source.connect(analyser);
+          source.connect(beatAnalyser);
           setAudio("source", source);
         } catch { /* already connected */ }
       }
@@ -84,9 +87,17 @@ export function useAudio() {
       const el = new Audio();
       el.crossOrigin = 'anonymous';
       setAudio("audio", el);
+      if (audio.audioCtx) {
+        try {
+          const source = audio.audioCtx.createMediaElementSource(el);
+          setAudio("source", source);
+          source.connect(audio.analyser!);
+          source.connect(audio.beatAnalyser!);
+        } catch { /* already connected or not supported */ }
+      }
       return el;
     },
-    setVolume: (v: number) => {
+    setVolume: (v: number, silent?: boolean) => {
       const clamped = Math.max(0, Math.min(1, v));
       setAudio({
         volume: clamped,
@@ -96,11 +107,20 @@ export function useAudio() {
         setAudio("lastNonZeroVolume", clamped);
       }
       if (audio.audio) {
-        audio.audio.volume = clamped;
+        if (audio.gainNode) {
+          const now = audio.audioCtx?.currentTime || 0;
+          audio.gainNode.gain.cancelScheduledValues(now);
+          audio.gainNode.gain.setTargetAtTime(clamped, now, 0.025);
+          audio.audio.volume = 1;
+        } else {
+          audio.audio.volume = clamped;
+        }
       }
-      try {
-        localStorage.setItem('apex-player-volume', String(clamped));
-      } catch { /* ignore */ }
+      if (!silent) {
+        try {
+          localStorage.setItem('apex-player-volume', String(clamped));
+        } catch { /* ignore */ }
+      }
     },
     reset: () => {
       setAudio({

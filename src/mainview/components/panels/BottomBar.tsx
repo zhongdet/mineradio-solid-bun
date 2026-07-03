@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { proxyImageUrl } from "../../lib/api";
 import { Component, createSignal, createEffect, For, Show } from "solid-js";
 import { usePlayback } from "../../stores/playbackStore";
 import { useAudio } from "../../stores/audioStore";
@@ -111,6 +112,24 @@ const BottomBar: Component = () => {
             <feBlend in="rg" in2="blue" mode="screen" result="output"></feBlend>
             <feGaussianBlur in="output" stdDeviation="0.35"></feGaussianBlur>
           </filter>
+          <filter id="mineradio-search-pill-glass-filter" color-interpolation-filters="sRGB" x="-48%" y="-68%" width="210%" height="236%">
+            <feImage id="search-pill-glass-map" x="-24%" y="-14%" width="148%" height="128%" preserveAspectRatio="none" result="map"></feImage>
+            <feDisplacementMap in="SourceGraphic" in2="map" scale="118" xChannelSelector="R" yChannelSelector="B" result="dispRed"></feDisplacementMap>
+            <feOffset in="dispRed" dx="-34" dy="0" result="dispRedShifted"></feOffset>
+            <feMerge result="dispRedAligned"><feMergeNode in="SourceGraphic"></feMergeNode><feMergeNode in="dispRedShifted"></feMergeNode></feMerge>
+            <feColorMatrix in="dispRedAligned" type="matrix" values="1 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0" result="red"></feColorMatrix>
+            <feDisplacementMap in="SourceGraphic" in2="map" scale="108" xChannelSelector="R" yChannelSelector="B" result="dispGreen"></feDisplacementMap>
+            <feOffset in="dispGreen" dx="-34" dy="0" result="dispGreenShifted"></feOffset>
+            <feMerge result="dispGreenAligned"><feMergeNode in="SourceGraphic"></feMergeNode><feMergeNode in="dispGreenShifted"></feMergeNode></feMerge>
+            <feColorMatrix in="dispGreenAligned" type="matrix" values="0 0 0 0 0  0 1 0 0 0  0 0 0 0 0  0 0 0 1 0" result="green"></feColorMatrix>
+            <feDisplacementMap in="SourceGraphic" in2="map" scale="100" xChannelSelector="R" yChannelSelector="B" result="dispBlue"></feDisplacementMap>
+            <feOffset in="dispBlue" dx="-34" dy="0" result="dispBlueShifted"></feOffset>
+            <feMerge result="dispBlueAligned"><feMergeNode in="SourceGraphic"></feMergeNode><feMergeNode in="dispBlueShifted"></feMergeNode></feMerge>
+            <feColorMatrix in="dispBlueAligned" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 1 0 0  0 0 0 1 0" result="blue"></feColorMatrix>
+            <feBlend in="red" in2="green" mode="screen" result="rg"></feBlend>
+            <feBlend in="rg" in2="blue" mode="screen" result="output"></feBlend>
+            <feGaussianBlur in="output" stdDeviation="0.35"></feGaussianBlur>
+          </filter>
         </defs>
       </svg>
       <button id="bottom-handle" type="button" aria-label="展开播放器控制台" title="播放器控制台"><span></span></button>
@@ -136,7 +155,7 @@ const BottomBar: Component = () => {
             <div class="control-track">
               <div id="control-cover" classList={{ "control-cover": true, "cover-empty": !song() }} aria-hidden="true">
                 <Show when={song()}>
-                  <img src={song()!.cover} alt="" style={{ width: "100%", height: "100%", "object-fit": "cover", "border-radius": "4px" }} />
+                  <img src={proxyImageUrl(song()!.cover)} alt="" style={{ width: "100%", height: "100%", "object-fit": "cover", "border-radius": "4px" }} />
                 </Show>
               </div>
               <div class="control-meta">

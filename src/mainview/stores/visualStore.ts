@@ -125,6 +125,9 @@ export interface VisualStore {
   headParallax: { x: number; y: number; active: boolean };
   // Gesture rotation
   gestureRotation: { x: number; y: number; inertia: number };
+  // Cover texture for Three.js
+  coverTextureUrl: string;
+  coverTextureCanvas: HTMLCanvasElement | null;
   // Beat map
   beatMapNextIdx: number;
   beatMapToken: number;
@@ -220,6 +223,8 @@ const [visual, setVisual] = createStore<VisualStore>({
   pointerTarget: { x: 0, y: 0 },
   headParallax: { x: 0, y: 0, active: false },
   gestureRotation: { x: 0, y: 0, inertia: 0 },
+  coverTextureUrl: '',
+  coverTextureCanvas: null,
   beatMapNextIdx: 0,
   beatMapToken: 0,
   beatMapBusy: false,

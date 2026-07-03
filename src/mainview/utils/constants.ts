@@ -20,5 +20,6 @@ export const LOCAL_BEATMAP_STORE_KEY = 'mineradio-local-beatmaps-v1';
 export const LOCAL_BEAT_PREF_STORE_KEY = 'mineradio-local-beatmap-prefs-v1';
 export const HOME_LISTEN_STATS_KEY = 'mineradio-listen-stats-v1';
 export const HOME_WEATHER_CITY_KEY = 'mineradio-weather-city';
+export const USER_FX_ARCHIVE_STORE_KEY = 'mineradio-user-fx-archives-v1';
 
 export type LocalStorageKeys = typeof CUSTOM_COVER_STORE_KEY;

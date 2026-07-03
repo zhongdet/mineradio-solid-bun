@@ -824,6 +824,28 @@ body.login-guide-active #login-guide-canvas{opacity:1}
 .modal-btn:hover{background:rgba(255,255,255,0.12);border-color:rgba(255,255,255,0.3)}
 .modal-btn.primary{background:rgba(244,210,138,0.14);border-color:rgba(244,210,138,0.50);color:var(--champagne)}
 .modal-btn.primary:hover{background:rgba(244,210,138,0.24)}
+
+/* Hotkey Modal */
+.modal-overlay{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,0.78);display:flex;align-items:center;justify-content:center;backdrop-filter:blur(12px)}
+.modal-content{position:relative;background:linear-gradient(180deg,rgba(24,23,26,0.96),rgba(12,11,12,0.92));border:1px solid rgba(244,210,138,0.16);border-radius:18px;padding:24px;max-width:480px;width:92vw;max-height:80vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 26px 90px rgba(0,0,0,.56)}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid rgba(255,255,255,.065)}
+.modal-title{font-size:14px;font-weight:700;letter-spacing:.5px;color:rgba(255,255,255,.95)}
+.modal-close{width:28px;height:28px;border:none;border-radius:8px;background:rgba(255,255,255,.06);color:rgba(255,255,255,.6);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .18s}
+.modal-close:hover{background:rgba(255,255,255,.12);color:#fff}
+.hotkey-body{overflow-y:auto;flex:1;scrollbar-width:thin;scrollbar-color:rgba(0,245,212,.22) transparent}
+.hotkey-category{margin-bottom:14px}
+.hotkey-cat-label{font-size:10px;font-weight:700;letter-spacing:1.2px;color:rgba(0,245,212,.56);text-transform:uppercase;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.hotkey-cat-label::after{content:'';height:1px;flex:1;background:linear-gradient(90deg,rgba(0,245,212,.16),transparent)}
+.hotkey-row{display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.hotkey-action-label{font-size:12px;color:rgba(255,255,255,.72);letter-spacing:.2px}
+.hotkey-binding{display:flex;align-items:center;gap:6px}
+.hotkey-capture-btn{min-width:100px;height:30px;padding:0 10px;border-radius:8px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.04);color:rgba(255,255,255,.78);font-size:11px;font-family:inherit;letter-spacing:.3px;cursor:pointer;transition:all .2s;text-align:center}
+.hotkey-capture-btn:hover{background:rgba(255,255,255,.1);color:#fff}
+.hotkey-capture-btn.capturing{border-color:rgba(0,245,212,.54);background:rgba(0,245,212,.08);color:var(--fc-accent);animation:hotkey-pulse 1.2s ease-in-out infinite}
+@keyframes hotkey-pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,245,212,.2)}50%{box-shadow:0 0 0 4px rgba(0,245,212,.1)}}
+.hotkey-reset-btn{width:26px;height:26px;border:none;border-radius:6px;background:transparent;color:rgba(255,255,255,.35);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .18s}
+.hotkey-reset-btn:hover{background:rgba(255,255,255,.08);color:rgba(255,255,255,.72)}
+.modal-actions{display:flex;gap:8px;margin-top:16px;padding-top:12px;border-top:1px solid rgba(255,255,255,.065)}
 .cover-crop-modal{width:min(720px,92vw);max-width:min(720px,92vw);padding:28px;text-align:left}
 .cover-crop-modal h2{text-align:center;margin-bottom:22px}
 .cover-crop-layout{display:grid;grid-template-columns:minmax(260px,312px) 1fr;gap:24px;align-items:center}

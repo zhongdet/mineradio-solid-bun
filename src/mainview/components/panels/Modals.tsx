@@ -1,13 +1,22 @@
 // @ts-nocheck
-import { Component, Show, createEffect, onCleanup } from "solid-js";
+import { Component, Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { useAuth } from "../../stores/authStore";
 import { useUser } from "../../stores/userStore";
 import { rpc } from "../../lib/api";
+import HotkeyModal from "./HotkeyModal";
 
 declare const gsap: any;
 
 const Modals: Component = () => {
   const auth = useAuth();
+  const [showHotkeyModal, setShowHotkeyModal] = createSignal(false);
+
+  // Listen for hotkey modal open events
+  createEffect(() => {
+    const handler = () => setShowHotkeyModal(true);
+    window.addEventListener("mineradio-open-hotkey-modal", handler);
+    onCleanup(() => window.removeEventListener("mineradio-open-hotkey-modal", handler));
+  });
 
   // ---- GSAP animation for modal open/close ----
   function animateModal(mask: HTMLElement | null, open: boolean, afterClose?: () => void) {
@@ -353,6 +362,11 @@ const Modals: Component = () => {
           </div>
         </div>
       </div>
+
+      {/* Hotkey Modal */}
+      <Show when={showHotkeyModal()}>
+        <HotkeyModal onClose={() => setShowHotkeyModal(false)} />
+      </Show>
     </>
   );
 };

@@ -2,7 +2,10 @@ import { useAudio } from "../stores/audioStore";
 import { usePlayback } from "../stores/playbackStore";
 import { useVisual } from "../stores/visualStore";
 import { useLyrics } from "../stores/lyricsStore";
-import { rpc } from "../lib/api";
+import { rpc, qqApi, proxyImageUrl } from "../lib/api";
+import { forcePlaybackControlsInteractive } from "../lib/uiControls";
+import { updateEmptyHomeVisibility } from "../lib/homeVisibility";
+import { createEffect, onCleanup } from "solid-js";
 
 interface PlayQueueAtOpts {
   context?: string;
@@ -21,11 +24,119 @@ export function useAudioPlayback() {
 
   let playQueueAtAbort: ReturnType<typeof setTimeout> | null = null;
 
+  // Listen for mineradio-hotkey events dispatched from BottomBar, SearchArea, etc.
+  createEffect(() => {
+    function onHotkey(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail === "togglePlay") togglePlay();
+      else if (detail === "nextTrack") nextTrack();
+      else if (detail === "prevTrack") prevTrack();
+      else if (detail === "volumeUp") {
+        const v = Math.min(1, audio.state.targetVolume + 0.05);
+        audio.setVolume(v);
+      } else if (detail === "volumeDown") {
+        const v = Math.max(0, audio.state.targetVolume - 0.05);
+        audio.setVolume(v);
+      } else if (detail === "goHome") {
+        window.dispatchEvent(new CustomEvent("mineradio-go-home"));
+      } else if (detail === "exitOrClose") {
+        window.dispatchEvent(new CustomEvent("mineradio-exit-or-close"));
+      } else if (detail === "toggleLyricsPanel") {
+        window.dispatchEvent(new CustomEvent("mineradio-toggle-lyrics-panel"));
+      } else if (detail === "toggleFxPanel") {
+        window.dispatchEvent(new CustomEvent("mineradio-toggle-fx-panel"));
+      } else if (detail === "toggleImmersive") {
+        window.dispatchEvent(new CustomEvent("mineradio-toggle-immersive"));
+      } else if (detail === "toggleDesktopLyrics") {
+        window.dispatchEvent(new CustomEvent("mineradio-toggle-desktop-lyrics"));
+      }
+    }
+    window.addEventListener("mineradio-hotkey", onHotkey);
+    onCleanup(() => window.removeEventListener("mineradio-hotkey", onHotkey));
+  });
+
+  // ── UI updaters (ported from legacy loadCoverFromUrl + setAlbumBackground) ──
+
+  function updateNowPlayingUI(song: any) {
+    const cover = song?.cover || '';
+    if (!cover) {
+      const albumBg = document.getElementById('album-bg');
+      if (albumBg) { albumBg.classList.remove('visible'); albumBg.style.backgroundImage = ''; }
+      const thumbCover = document.getElementById('thumb-cover') as HTMLImageElement | null;
+      if (thumbCover) thumbCover.removeAttribute('src');
+      const thumbWrap = document.getElementById('thumb-wrap');
+      if (thumbWrap) thumbWrap.classList.remove('visible');
+      return;
+    }
+
+    // Album background
+    const albumBg = document.getElementById('album-bg');
+    if (albumBg) {
+      albumBg.style.backgroundImage = 'url(' + proxyImageUrl(cover) + ')';
+      albumBg.classList.add('visible');
+    }
+
+    // Thumb wrap
+    const thumbCover = document.getElementById('thumb-cover') as HTMLImageElement | null;
+    if (thumbCover) thumbCover.src = proxyImageUrl(cover);
+    const thumbTitle = document.getElementById('thumb-title');
+    if (thumbTitle) thumbTitle.textContent = song.name || '';
+    const thumbArtist = document.getElementById('thumb-artist');
+    if (thumbArtist) thumbArtist.textContent = song.artist || '';
+    const thumbWrap = document.getElementById('thumb-wrap');
+    if (thumbWrap) thumbWrap.classList.add('visible');
+
+    // Control cover in bottom bar
+    const controlCoverImg = document.querySelector('#control-cover img') as HTMLImageElement | null;
+    if (controlCoverImg) controlCoverImg.src = proxyImageUrl(cover);
+
+    // Mini-queue list: rebuild list items from queue
+    rebuildMiniQueue();
+
+    // Store cover URL for visual engine
+    visual.set("coverTextureUrl", cover);
+  }
+
+  function rebuildMiniQueue() {
+    const list = document.getElementById('mini-queue-list');
+    if (!list) return;
+    const q = playback.state.playQueue;
+    const idx = playback.state.currentIdx;
+    list.innerHTML = '';
+    q.forEach((s: any, i: number) => {
+      const row = document.createElement('div');
+      row.className = 'mini-queue-row' + (i === idx ? ' active' : '');
+      row.style.cursor = 'pointer';
+      row.onclick = () => playQueueAt(i);
+      const cover = s.cover || '';
+      row.innerHTML =
+        (cover ? '<img class="mini-queue-row-cover" src="' + cover + '" onerror="this.style.opacity=\'0.2\'" loading="lazy">' : '') +
+        '<div class="mini-queue-row-info">' +
+          '<span class="mini-queue-row-title">' + (s.name || '') + '</span>' +
+          '<span class="mini-queue-row-artist">' + (s.artist || '') + '</span>' +
+        '</div>' +
+        '<button class="mini-queue-row-remove" title="移除" style="opacity:0.5;cursor:pointer;background:none;border:none;color:inherit;font-size:14px;padding:2px 6px;">×</button>';
+      const removeBtn = row.querySelector('.mini-queue-row-remove') as HTMLButtonElement | null;
+      if (removeBtn) {
+        removeBtn.onclick = (e) => {
+          e.stopPropagation();
+          removeFromQueue(i);
+          rebuildMiniQueue();
+        };
+      }
+      list.appendChild(row);
+    });
+    const count = document.getElementById('mini-queue-count');
+    if (count) count.textContent = q.length + ' 首';
+  }
+
+  let trackSwitchToken = 0;
+
   async function playQueueAt(idx: number, opts: PlayQueueAtOpts = {}) {
     if (idx < 0 || idx >= playback.state.playQueue.length) return;
     if (playQueueAtAbort) clearTimeout(playQueueAtAbort);
 
-    const token = ++playback.state.currentIdx; // Simple token to cancel stale calls
+    const token = ++trackSwitchToken;
     playback.set("currentIdx", idx);
     playback.set("playToggleBusy", false);
 
@@ -44,24 +155,41 @@ export function useAudioPlayback() {
     lyrics.set("hasNativeKaraoke", false);
     lyrics.set("timingSource", "fallback");
 
+    // Update UI: album background, thumb wrap, bottom bar, mini queue
+    updateNowPlayingUI(song);
+
+    // Hide empty home, show controls
+    updateEmptyHomeVisibility();
+    forcePlaybackControlsInteractive();
+
     // Try to get audio URL
     const quality = opts.qualityOverride || audio.state.targetVolume > 0 ? "standard" : "standard";
     let data: any;
 
     try {
-      if ((song as any).mid) {
-        // QQ music
-        data = await rpc<any>("song_url_v1", { id: (song as any).mid, mediaMid: (song as any).mediaMid, quality });
+      const isQQ = song.provider === "qq" || song.source === "qq" || song.type === "qq";
+      if (isQQ) {
+        const qqMid = song.mid || song.songmid || song.mediaMid;
+        if (qqMid) {
+          data = await qqApi.songUrl(qqMid, song.mediaMid, quality);
+        } else {
+          data = await rpc<any>("song_url", { id: String(song.id), quality });
+        }
       } else {
         data = await rpc<any>("song_url", { id: String(song.id), quality });
       }
     } catch (err) {
       console.error("PlayQueueAt: failed to get audio URL", err);
+      if (token === trackSwitchToken) nextTrack();
       return;
     }
 
-    if (!data.url) {
+    if (token !== trackSwitchToken) return;
+
+    const songUrl = data?.url || data?.data?.[0]?.url;
+    if (!songUrl) {
       console.warn("PlayQueueAt: no URL available");
+      if (token === trackSwitchToken) nextTrack();
       return;
     }
 
@@ -71,11 +199,12 @@ export function useAudioPlayback() {
     }
 
     const audioEl = audio.state.audio!;
-    audioEl.src = `/api/audio?url=${encodeURIComponent(data.url)}`;
+    audioEl.src = `/api/audio?url=${encodeURIComponent(songUrl)}`;
     audioEl.load();
 
     // Bind ended event
     audioEl.onended = () => {
+      if (token !== trackSwitchToken) return;
       if (playback.state.playMode === "single") {
         playQueueAt(idx, { autoRepeat: true });
       } else {
@@ -84,7 +213,8 @@ export function useAudioPlayback() {
     };
 
     // Fetch lyrics
-    fetchLyric(song, token);
+    await fetchLyric(song, token);
+    if (token !== trackSwitchToken) return;
 
     // Play
     await playAudio();
@@ -121,16 +251,40 @@ export function useAudioPlayback() {
       if (audio.state.audio.paused) {
         await playAudio();
       } else {
-        audio.state.audio.pause();
-        playback.set("playing", false);
+        await fadeOutAndPauseAudio();
       }
+    } catch (err) {
+      console.warn("TogglePlay error:", err);
+      playback.set("playing", false);
     } finally {
       playback.set("playToggleBusy", false);
     }
   }
 
+  async function fadeOutAndPauseAudio() {
+    if (!audio.state.audio) return;
+    const fadeSerial = audio.state.audioFadeSerial + 1;
+    audio.set("audioFadeSerial", fadeSerial);
+    const el = audio.state.audio;
+    const startVol = audio.state.volume;
+    const steps = 20;
+    const fadeTime = 300;
+    const stepTime = fadeTime / steps;
+    for (let i = 0; i < steps; i++) {
+      if (fadeSerial !== audio.state.audioFadeSerial) return;
+      const t = (i + 1) / steps;
+      el.volume = startVol * (1 - t);
+      await new Promise(r => setTimeout(r, stepTime));
+    }
+    el.pause();
+    el.volume = 1;
+    playback.set("playing", false);
+    audio.set("volume", startVol);
+  }
+
   function nextTrack() {
     if (!playback.state.playQueue.length) return;
+    playback.set("playToggleBusy", false);
     let nextIdx: number;
     if (playback.state.playMode === "shuffle") {
       nextIdx = Math.floor(Math.random() * playback.state.playQueue.length);
@@ -142,6 +296,7 @@ export function useAudioPlayback() {
 
   function prevTrack() {
     if (!playback.state.playQueue.length) return;
+    playback.set("playToggleBusy", false);
     const prevIdx = playback.state.currentIdx <= 0
       ? playback.state.playQueue.length - 1
       : playback.state.currentIdx - 1;
@@ -179,6 +334,37 @@ export function useAudioPlayback() {
     return "🔁";
   }
 
+  // ── Fetch Lyrics ──
+
+  async function fetchLyric(song: any, _token: number) {
+    try {
+      const data = await rpc<any>("lyric", { id: String(song.id) });
+      if (!data) return null;
+      const lines: any[] = [];
+      const raw = data.lrc?.lyric || "";
+      const regex = /\[(\d+):(\d+\.\d+)\](.*)/g;
+      let match;
+      while ((match = regex.exec(raw)) !== null) {
+        const minute = parseInt(match[1]);
+        const second = parseFloat(match[2]);
+        const time = minute * 60 + second;
+        const text = match[3].trim();
+        if (text) lines.push({ time, duration: 0, text });
+      }
+      for (let i = 0; i < lines.length; i++) {
+        if (i < lines.length - 1) lines[i].duration = lines[i + 1].time - lines[i].time;
+      }
+      const hasKaraoke = !!data.krc?.lyric;
+      lyrics.set("lines", lines);
+      lyrics.set("hasNativeKaraoke", hasKaraoke);
+      lyrics.set("timingSource", hasKaraoke ? "krc" : "lrc");
+      return { lines, hasKaraoke, timingSource: hasKaraoke ? "krc" as const : "lrc" as const };
+    } catch (err) {
+      console.warn("Failed to fetch lyric:", err);
+      return null;
+    }
+  }
+
   return {
     playQueueAt,
     togglePlay,
@@ -191,39 +377,6 @@ export function useAudioPlayback() {
     getPlayModeIcon,
     playAudio,
   };
-}
-
-async function fetchLyric(song: any, _token: number) {
-  try {
-    const data = await rpc<any>("lyric", { id: String(song.id) });
-    if (!data) return;
-    // Parse lrc format: [mm:ss.xx]text
-    const lines: any[] = [];
-    const raw = data.lrc?.lyric || "";
-    const regex = /\[(\d+):(\d+\.\d+)\](.*)/g;
-    let match;
-    while ((match = regex.exec(raw)) !== null) {
-      const minute = parseInt(match[1]);
-      const second = parseFloat(match[2]);
-      const time = minute * 60 + second;
-      const text = match[3].trim();
-      if (text) {
-        lines.push({ time, duration: 0, text });
-      }
-    }
-    // Calculate durations
-    for (let i = 0; i < lines.length; i++) {
-      if (i < lines.length - 1) {
-        lines[i].duration = lines[i + 1].time - lines[i].time;
-      }
-    }
-    // Check for karaoke (KRC)
-    const hasKaraoke = !!data.krc?.lyric;
-    return { lines, hasKaraoke, timingSource: hasKaraoke ? "krc" : "lrc" };
-  } catch (err) {
-    console.warn("Failed to fetch lyric:", err);
-    return null;
-  }
 }
 
 export type AudioPlaybackHook = ReturnType<typeof useAudioPlayback>;

@@ -42,6 +42,7 @@ const Splash: Component = () => {
       perf("home-revealed");
       document.body.classList.remove("splash-active");
       document.body.classList.remove("splash-revealing");
+      window.dispatchEvent(new CustomEvent("mineradio-reveal-idle-particles", { detail: { delay: 2400 } }));
       requestAnimationFrame(() => {
         updateEmptyHomeVisibility({ forceLoad: true });
         let homeShown = document.body.classList.contains("empty-home-active");
@@ -81,6 +82,7 @@ const Splash: Component = () => {
     }
     document.addEventListener("keydown", onKeydown);
 
+    const readyDelay = window.AudioContext || (window as any).webkitAudioContext ? 5000 : 900;
     timer = setTimeout(() => {
       if (!splashEl) return;
       perf("splash-ready");
@@ -89,7 +91,7 @@ const Splash: Component = () => {
       splashEl.setAttribute("tabindex", "0");
       splashEl.setAttribute("aria-label", "点击进入 Mineradio");
       timer = null;
-    }, 5000);
+    }, readyDelay);
   });
 
   onCleanup(() => {
