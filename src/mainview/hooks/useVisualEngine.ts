@@ -5,6 +5,9 @@ import { useFx } from "../stores/fxStore";
 import { usePerformance } from "./usePerformance";
 import { useShelf3D } from "./useShelf3D";
 import { useGesture } from "./useGesture";
+import { setPeek } from "../lib/peek";
+import { useSettings } from "../stores/settingsStore";
+import { useHome } from "../stores/homeStore";
 
 declare const THREE: any;
 
@@ -848,6 +851,29 @@ export function useVisualEngine() {
       mouseWorld.y = -(e.clientY / window.innerHeight) * 2 + 1;
       mouseActive = true;
       visual.set("pointerTarget", { x: mouseWorld.x * 0.3, y: mouseWorld.y * 0.2 });
+
+      // Search area peek logic (match original behavior)
+      const sa = document.getElementById("search-area");
+      if (!sa) return;
+      
+      const settings = useSettings();
+      const home = useHome();
+      const ey = e.clientY;
+      const ex = e.clientX;
+      const saOn = sa.classList.contains("peek");
+      const saRect = sa.getBoundingClientRect();
+      const searchFocused = document.activeElement?.id === "search-input";
+      const uploadTip = document.getElementById("upload-tip");
+      const uploadTipOpen = !!(uploadTip && uploadTip.classList.contains("show"));
+      const emptyHomeActive = home.state.emptyHomeActive;
+      
+      // Show search when: mouse at top 66px, OR already peeking and mouse in panel area, OR input focused, OR upload tip open
+      const inSearchPanel = saOn && ex >= saRect.left - 24 && ex <= saRect.right + 24 && ey >= saRect.top - 22 && ey <= saRect.bottom + 42;
+      if (ey < 66 || inSearchPanel || searchFocused || uploadTipOpen) {
+        setPeek(sa, true, "search");
+      } else if (saOn && !emptyHomeActive) {
+        setPeek(sa, false, "search");
+      }
     };
     const handlePointerLeave = () => { mouseActive = false; };
     window.addEventListener("mousemove", handlePointerMove);

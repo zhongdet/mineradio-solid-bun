@@ -146,7 +146,7 @@ const SearchArea: Component = () => {
           </For>
         </div>
 
-        <div id="search-results" classList={{ show: search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading || search.state.history.length > 0 }}>
+        <div id="search-results" classList={{ show: query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading) }}>
           <Show when={search.state.loading}>
             <div class="search-loading">搜索中...</div>
           </Show>
