@@ -445,11 +445,19 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
   }
 
   function isPointerOverUi(e: MouseEvent): boolean {
+    // Use e.target first as it's the most reliable
+    const target = e.target as Element;
+    if (!target) return false;
+    
+    // Check if the actual clicked element is a UI element
+    const uiEl = target.closest('#search-area, .fx-panel, .bottom-bar, .playlist-panel, .stage-lyrics, .modals, .top-right, .gesture-hud, .thumb-wrap, .trial-banner, .status-chips, .overlays, .hidden-inputs, .visual-guide, .hotkey-modal, .empty-home');
+    if (uiEl) return true;
+    
+    // Fallback to elementFromPoint for cases where event target might not be accurate
     const el = document.elementFromPoint(e.clientX, e.clientY);
     if (!el) return false;
-    // Check if pointer is over interactive UI elements
-    const uiEl = el.closest('.fx-panel, .search-area, .bottom-bar, .playlist-panel, .stage-lyrics, .modals, .top-right, .gesture-hud, .thumb-wrap, .trial-banner, .status-chips, .overlays, .hidden-inputs, .visual-guide, .hotkey-modal, .empty-home');
-    return !!uiEl;
+    const uiEl2 = el.closest('#search-area, .fx-panel, .bottom-bar, .playlist-panel, .stage-lyrics, .modals, .top-right, .gesture-hud, .thumb-wrap, .trial-banner, .status-chips, .overlays, .hidden-inputs, .visual-guide, .hotkey-modal, .empty-home');
+    return !!uiEl2;
   }
 
   function raycastCards(rc: THREE.Raycaster): any | null {

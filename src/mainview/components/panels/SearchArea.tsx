@@ -5,6 +5,7 @@ import { usePlayback } from "../../stores/playbackStore";
 import { useUi } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
 import { proxyImageUrl } from "../../lib/api";
+import { getPlayQueueAt } from "../../lib/playbackBridge";
 
 const SearchArea: Component = () => {
   const search = useSearch();
@@ -21,6 +22,12 @@ const SearchArea: Component = () => {
       const q = value.trim();
       if (q) {
         window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: search.state.mode } }));
+      } else {
+        search.setSearchResults([]);
+        search.setPodcastResults([]);
+        if (search.state.mode === "podcast") {
+          window.dispatchEvent(new CustomEvent("mineradio-podcast-hot"));
+        }
       }
     }, 300);
   }
@@ -58,12 +65,15 @@ const SearchArea: Component = () => {
     window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: search.state.mode } }));
   }
 
-  function playSearchResult(idx: number) {
+  async function playSearchResult(idx: number) {
     const song = search.state.results[idx];
     if (!song) return;
-    playback.set("playQueue", [song]);
-    playback.set("currentIdx", 0);
-    window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: "togglePlay" }));
+    const playQueueAt = getPlayQueueAt();
+    if (playQueueAt) {
+      playback.set("playQueue", [song]);
+      playback.set("currentIdx", 0);
+      await playQueueAt(0).catch((e: any) => console.warn("[SearchPlay]", e));
+    }
   }
 
   function openSearchResultArtist(idx: number) {
@@ -108,7 +118,7 @@ const SearchArea: Component = () => {
   }
 
   return (
-    <div id="search-area">
+    <div id="search-area" classList={{ "has-results": query().trim().length > 0 || search.state.history.length > 0 }}>
       <div id="search-stack">
         <form id="search-box" onSubmit={handleSubmit}>
           <svg id="search-icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -122,6 +132,15 @@ const SearchArea: Component = () => {
             spellcheck={false}
             value={query()}
             onInput={(e) => handleInput(e.currentTarget.value)}
+            onFocus={() => {
+              if (!query().trim()) {
+                search.setSearchResults([]);
+                search.setPodcastResults([]);
+                if (search.state.mode === "podcast") {
+                  window.dispatchEvent(new CustomEvent("mineradio-podcast-hot"));
+                }
+              }
+            }}
           />
         </form>
 
@@ -146,7 +165,7 @@ const SearchArea: Component = () => {
           </For>
         </div>
 
-        <div id="search-results" classList={{ show: query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading) }}>
+        <div id="search-results" classList={{ show: (query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading)) || search.state.history.length > 0 }}>
           <Show when={search.state.loading}>
             <div class="search-loading">搜索中...</div>
           </Show>
@@ -213,9 +232,11 @@ const SearchArea: Component = () => {
               <div class="search-history-list">
                 <For each={search.state.history}>
                   {(h) => (
-                    <button class="search-history-chip" type="button" onClick={() => {
-                      setQuery(h.query);
-                      window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: h.query, mode: h.mode || search.state.mode } }));
+                    <button class="search-history-chip" type="button" onClick={(e) => {
+                      e.stopPropagation();
+                      const q = h.query;
+                      setQuery(q);
+                      window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: h.mode || search.state.mode } }));
                     }}>{h.query}</button>
                   )}
                 </For>
