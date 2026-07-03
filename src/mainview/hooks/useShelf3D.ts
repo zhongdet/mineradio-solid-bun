@@ -6,7 +6,6 @@ import { usePlayback } from "../stores/playbackStore";
 import { useVisual } from "../stores/visualStore";
 
 const VISIBLE_RADIUS = 5;
-const MAX_RENDER = VISIBLE_RADIUS * 2 + 1;
 const CARD_W = 2.05;
 const CARD_H = 1.025;
 const CANVAS_W = 720;
@@ -18,7 +17,7 @@ function loadCover(url: string): Promise<HTMLImageElement | null> {
   if (!url) return Promise.resolve(null);
   const rec = coverCache[url];
   if (rec?.loaded && rec.img) return Promise.resolve(rec.img);
-  if (rec?.loading) return new Promise((res) => { /* wait */ });
+  if (rec?.loading) return new Promise(() => {});
   coverCache[url] = { loaded: false, loading: true, img: null, failed: false };
   return new Promise((resolve) => {
     const img = new Image();
@@ -60,7 +59,7 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
 function drawCard(
   card: { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D; texture: THREE.CanvasTexture; item: any; isCenter: boolean },
   bass: number,
-  accentColor: string
+  accentColor: string,
 ) {
   const { canvas, ctx, texture, item, isCenter } = card;
   const W = canvas.width;
@@ -68,7 +67,6 @@ function drawCard(
   ctx.clearRect(0, 0, W, H);
   const pad = 18;
 
-  // Background
   roundRect(ctx, pad, pad, W - pad * 2, H - pad * 2, 32);
   ctx.fillStyle = "rgba(0,0,0,0.82)";
   ctx.fill();
@@ -78,13 +76,11 @@ function drawCard(
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // Border
   const isNow = item.isCurrent;
   ctx.strokeStyle = isNow ? accentColor + "b8" : "rgba(255,255,255,0.14)";
   ctx.lineWidth = isNow ? 1.8 + bass * 1.2 : 1.1;
   ctx.stroke();
 
-  // Cover image
   const coverSize = H - pad * 2 - 8;
   const cx = pad + 6;
   const cy = pad + 4;
@@ -105,23 +101,19 @@ function drawCard(
     }
   }
 
-  // Tag
   const tx = pad + coverSize + 32;
   ctx.font = "700 17px Inter, Arial";
   ctx.fillStyle = isNow ? accentColor : "rgba(255,255,255,0.92)";
   ctx.fillText(item.tag || "", tx, pad + 36);
 
-  // Title
   ctx.font = "700 30px Inter, Arial";
   ctx.fillStyle = "rgba(255,255,255,0.96)";
   wrapText(ctx, item.title || "", tx, pad + 78, W - tx - pad - 14, 36, 2);
 
-  // Subtitle
   ctx.font = "400 17px Inter, Arial";
   ctx.fillStyle = "rgba(255,255,255,0.52)";
   wrapText(ctx, item.sub || "", tx, pad + 156, W - tx - pad - 14, 24, 2);
 
-  // Accent bar
   ctx.strokeStyle = isNow ? accentColor + "e6" : "rgba(255,255,255,0.30)";
   ctx.lineWidth = 3.5;
   ctx.beginPath();
@@ -129,11 +121,10 @@ function drawCard(
   ctx.lineTo(tx + Math.min(260, 80 + bass * 320), H - pad - 22);
   ctx.stroke();
 
-  // Center card action hint
   if (isCenter) {
     ctx.font = "600 14px Inter, Arial";
     ctx.fillStyle = accentColor + "d6";
-    ctx.fillText("点击播放", tx, H - pad - 50);
+    ctx.fillText("\u70b9\u51fb\u64ad\u653e", tx, H - pad - 50);
   }
 
   texture.needsUpdate = true;
@@ -154,22 +145,31 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
     item: any;
     index: number;
     isCenter: boolean;
+    selected: boolean;
     floatMix: number;
     drawKey: string;
+    lastDof?: number;
+    dofBucket?: number;
+    fxPulse?: number;
   }> = [];
   let centerSmooth = 0;
   let centerTarget = 0;
   let lastRebuildTime = 0;
   let lastDrawTime = 0;
+  let shelfVisibility = 0;
+  let appRevealed = false;
 
   function getMode(): string {
     return fx.state.shelf;
   }
 
+  function shelfAlwaysVisible(): boolean {
+    return fx.state.shelfPresence === "always";
+  }
+
   function rebuild() {
     if (!group) return;
 
-    // Dispose old cards
     for (const c of cards) {
       c.texture.dispose();
       c.mesh.material.dispose();
@@ -190,7 +190,7 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
         title: song.name || "",
         sub: song.artist || "",
         cover: song.cover || "",
-        tag: i === currentIdx ? "正在播放" : `#${i + 1}`,
+        tag: i === currentIdx ? "\u6b63\u5728\u64ad\u653e" : `#${i + 1}`,
         queueIndex: i,
         isCurrent: i === currentIdx,
       });
@@ -233,6 +233,7 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
         item,
         index: i,
         isCenter: Math.abs(i - centerSmooth) < 0.5,
+        selected: false,
         floatMix: 0,
         drawKey: "",
       });
@@ -258,38 +259,61 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
     card.mesh.renderOrder = 60 + Math.round((VISIBLE_RADIUS + 1 - Math.min(absD, VISIBLE_RADIUS + 1)) * 10);
 
     const parWeight = Math.max(0, 1 - absD * 0.16);
+    const pulse = card.fxPulse || 0;
 
     // DOF blur on distant cards
     const nextDof = Math.max(0, Math.min(1, (absD - 0.45) / 3.2));
-    if (Math.abs(nextDof - (card.lastDof || 0)) > 0.12) {
-      card.lastDof = nextDof;
+    const nextDofBucket = Math.round(nextDof * 5);
+    if (card.dofBucket !== nextDofBucket) {
+      card.dofBucket = nextDofBucket;
       drawCard(card, bass, fx.state.shelfAccentColor);
     }
 
-    // Lift for center card
-    const liftTarget = card.isCenter ? 1 : 0;
-    const liftRate = liftTarget > card.floatMix ? 0.20 : 0.13;
-    card.floatMix += (liftTarget - card.floatMix) * liftRate;
-    const lift = card.floatMix;
+    // Selection lift animation
+    const liftTarget = card.selected ? 1 : 0;
+    const liftRate = liftTarget > (card.floatMix || 0) ? 0.20 : 0.13;
+    card.floatMix = (card.floatMix || 0) + (liftTarget - (card.floatMix || 0)) * liftRate;
+    if (!liftTarget && card.floatMix < 0.004) card.floatMix = 0;
+    const lift = card.floatMix || 0;
 
     if (mode === "side") {
-      const sideX = 3.18 + fx.state.shelfOffsetX;
-      const sideYStep = 0.68;
-      const sideZ = 0.86 + fx.state.shelfOffsetZ;
-      const sideZStep = 0.170;
-      const sideScale = fx.state.shelfSize;
+      const shelfCtl = {
+        size: fx.state.shelfSize,
+        x: fx.state.shelfOffsetX,
+        y: fx.state.shelfOffsetY,
+        z: fx.state.shelfOffsetZ,
+        angle: fx.state.shelfAngleY * (Math.PI / 180),
+        opacity: fx.state.shelfOpacity,
+      };
 
-      const px = sideX + absD * 0.040 + parX * 0.060 * parWeight - lift * 0.145;
-      const py = fx.state.shelfOffsetY - delta * sideYStep + lift * 0.105;
-      const pz = sideZ - absD * sideZStep + lift * 0.220;
-      const scale = (absD < 0.5 ? 1.12 : Math.max(0.55, 1.04 - absD * 0.14)) * (1 + lift * 0.075) * sideScale;
+      // Layout values matching original (non-portrait, non-narrow, non-skull defaults)
+      const sideX = 3.18 + shelfCtl.x;
+      const sideY = shelfCtl.y;
+      const sideXStep = 0.040;
+      const sideYStep = 0.68;
+      const sideZ = 0.86 + shelfCtl.z;
+      const sideZStep = 0.170;
+      const sideScale = shelfCtl.size;
+      const sideRotY = 0.28 + shelfCtl.angle;
+      const sideRotX = 0.042;
+
+      // Position: arc with X stepping in, Y stepping down, Z stepping back
+      const px = sideX + absD * sideXStep + parX * 0.060 * parWeight - lift * 0.145;
+      const py = sideY - delta * sideYStep + parY * 0.046 * parWeight + lift * 0.105;
+      const pz = sideZ - absD * sideZStep + (parY * 0.026 - parX * 0.028) * parWeight + lift * 0.220;
+
+      const scale = (absD < 0.5 ? 1.12 : Math.max(0.55, 1.04 - absD * 0.14)) * (1 + pulse * 0.056 + lift * 0.075) * sideScale;
 
       card.mesh.position.set(px, py, pz);
-      card.mesh.rotation.y = fx.state.shelfAngleY * (Math.PI / 180) + parX * 0.038 * parWeight;
-      card.mesh.rotation.x = -delta * 0.042 - parY * 0.024 * parWeight;
+      card.mesh.rotation.y = sideRotY + parX * 0.038 * parWeight;
+      card.mesh.rotation.x = -delta * sideRotX - parY * 0.024 * parWeight;
       card.mesh.scale.setScalar(scale);
+
+      // Opacity: distance fade + visibility + shelf opacity
+      const opBase = absD < 0.5 ? 1.0 : Math.max(0.22, 1.0 - absD * 0.30);
+      card.mesh.material.opacity = Math.min(1, opBase * shelfVisibility + pulse * 0.10) * shelfCtl.opacity;
     } else {
-      // stage mode
+      // Stage mode
       const stageXStep = 1.55;
       const stageY = -2.20 + fx.state.shelfOffsetY;
       const stageZ = 1.0 + fx.state.shelfOffsetZ;
@@ -298,17 +322,16 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
       const px = fx.state.shelfOffsetX + delta * stageXStep + parX * 0.110 * parWeight;
       const py = stageY + parY * 0.060 * parWeight;
       const pz = (absD < 0.5 ? stageZ : stageZ - Math.min(2.0, absD) * 0.55) + (parY * 0.040 - parX * 0.035) * parWeight;
-      const scale = (absD < 0.5 ? 1.20 : Math.max(0.45, 1.0 - absD * 0.22)) * stageScale;
+      const scale = (absD < 0.5 ? 1.20 : Math.max(0.45, 1.0 - absD * 0.22)) * (1 + pulse * 0.060) * stageScale;
 
       card.mesh.position.set(px, py, pz);
       card.mesh.rotation.y = -delta * 0.22 + parX * 0.050 * parWeight;
       card.mesh.rotation.x = 0.10 - absD * 0.04 - parY * 0.028 * parWeight;
       card.mesh.scale.setScalar(scale);
-    }
 
-    // Opacity
-    const opBase = absD < 0.5 ? 1.0 : Math.max(0.22, 1.0 - absD * 0.30);
-    card.mesh.material.opacity = opBase * fx.state.shelfOpacity;
+      const opBase = absD < 0.5 ? 1.0 : Math.max(0.22, 1.0 - absD * 0.30);
+      card.mesh.material.opacity = opBase * fx.state.shelfOpacity;
+    }
   }
 
   function update(dt: number) {
@@ -321,6 +344,11 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
     }
 
     if (!group.parent) scene.add(group);
+
+    // Mark app as revealed after first meaningful update
+    if (!appRevealed && playback.state.playQueue.length > 0) {
+      appRevealed = true;
+    }
 
     // Rebuild if data changed
     const now = performance.now() / 1000;
@@ -343,25 +371,42 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
     // Audio bass for card animations
     const bass = visual.state.smoothBass || 0;
 
-    // Group transform
-    if (mode === "side") {
-      group.renderOrder = 50;
-      group.position.set(0, 0, 0);
+    // Visibility animation (matches original)
+    const modeVal = getMode();
+    let targetVis: number;
+    if (!appRevealed) {
+      targetVis = 0;
+    } else if (modeVal === "side") {
+      if (!cards.length) targetVis = 0;
+      else targetVis = (shelf.state.pinnedOpen || shelfAlwaysVisible()) ? 1.0 : 0;
+    } else {
+      targetVis = cards.length ? 1.0 : 0;
+    }
+    shelfVisibility += (targetVis - shelfVisibility) * (targetVis > shelfVisibility ? 0.22 : 0.18);
+    if (shelfVisibility < 0.01 && targetVis === 0) shelfVisibility = 0;
+    group.visible = appRevealed && (modeVal !== "side" || shelfVisibility > 0) && cards.length > 0;
+
+    // Group rotation: bind to particles when always-visible
+    const pRot = visual.state.particlesRotation;
+    const bindToCover = shelfAlwaysVisible() && pRot && modeVal === "side";
+    if (bindToCover) {
+      group.rotation.x += ((pRot.x - parY * 0.010) - group.rotation.x) * 0.075;
+      group.rotation.y += ((pRot.y + parX * 0.018) - group.rotation.y) * 0.075;
+      group.rotation.z += (pRot.z - group.rotation.z) * 0.075;
+    } else {
       group.rotation.y += (parX * 0.018 - group.rotation.y) * 0.045;
       group.rotation.x += (-parY * 0.010 - group.rotation.x) * 0.045;
       group.rotation.z *= 0.955;
-    } else {
-      group.renderOrder = 50;
-      const t = visual.state.time || 0;
-      group.position.y = Math.sin(t * 0.3) * 0.04;
-      group.position.x = parX * 0.10;
-      group.rotation.y = parX * 0.025;
-      group.rotation.x = -parY * 0.012;
     }
+
+    // Passive always-visible group render order
+    const passiveAlwaysGroup = shelfAlwaysVisible() && !shelf.state.pinnedOpen;
+    const liftedCardActive = passiveAlwaysGroup && cards.some((c) => c.selected || (c.floatMix || 0) > 0.025);
+    group.renderOrder = passiveAlwaysGroup && !liftedCardActive ? 30 : 50;
 
     // Place cards
     for (const card of cards) {
-      placeCard(card, mode, parX, parY, bass);
+      placeCard(card, modeVal, parX, parY, bass);
     }
 
     // Redraw cards periodically
@@ -389,31 +434,158 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
     }
   }
 
-  // Watch for mode changes
-  let lastMode = getMode();
-  function checkModeChange() {
+  // ── Interaction: click to play/scroll ──
+
+  function raycasterFromPointerEvent(e: MouseEvent): THREE.Raycaster {
+    const mx = (e.clientX / window.innerWidth) * 2 - 1;
+    const my = -(e.clientY / window.innerHeight) * 2 + 1;
+    const rc = new THREE.Raycaster();
+    rc.setFromCamera(new THREE.Vector2(mx, my), camera!);
+    return rc;
+  }
+
+  function isPointerOverUi(e: MouseEvent): boolean {
+    const el = document.elementFromPoint(e.clientX, e.clientY);
+    if (!el) return false;
+    // Check if pointer is over interactive UI elements
+    const uiEl = el.closest('.fx-panel, .search-area, .bottom-bar, .playlist-panel, .stage-lyrics, .modals, .top-right, .gesture-hud, .thumb-wrap, .trial-banner, .status-chips, .overlays, .hidden-inputs, .visual-guide, .hotkey-modal, .empty-home');
+    return !!uiEl;
+  }
+
+  function raycastCards(rc: THREE.Raycaster): any | null {
+    if (!group) return null;
+    const meshes = cards.map((c) => c.mesh);
+    const intersects = rc.intersectObjects(meshes);
+    if (intersects.length > 0) {
+      const hit = intersects[0];
+      const card = cards.find((c) => c.mesh === hit.object);
+      if (card) return card;
+    }
+    return null;
+  }
+
+  function setSelected(idx: number | null) {
+    for (const c of cards) {
+      c.selected = idx !== null && c.index === idx;
+    }
+  }
+
+  function clearSelected() {
+    for (const c of cards) c.selected = false;
+  }
+
+  function step(direction: number) {
+    if (!cards.length) return;
+    const prevTarget = Math.round(centerTarget);
+    centerTarget = Math.max(0, Math.min(cards.length - 1, centerTarget + direction));
+    const nextTarget = Math.round(centerTarget);
+    if (nextTarget !== prevTarget) {
+      // Pulse the target card
+      const targetCard = cards.find((c) => c.index === nextTarget);
+      if (targetCard) targetCard.fxPulse = 0.55;
+    }
+  }
+
+  function getCenterIdx(): number {
+    return Math.round(centerSmooth);
+  }
+
+  // Scroll/wheel handler
+  function handleWheel(e: WheelEvent) {
+    if (isPointerOverUi(e)) return;
+    if (!group || !group.parent) return;
+    if (getMode() === "off") return;
+
     const mode = getMode();
-    if (mode !== lastMode) {
-      lastMode = mode;
-      if (mode === "off") {
-        dispose();
-      } else if (scene) {
-        ensureGroup(scene);
-        rebuild();
+    const rc = raycasterFromPointerEvent(e);
+    const cardHit = raycastCards(rc);
+    let inShelfArea = false;
+
+    if (mode === "side" && shelf.state.pinnedOpen) {
+      inShelfArea = true;
+    } else if (mode === "side" && shelfAlwaysVisible()) {
+      inShelfArea = !!cardHit;
+    } else if (mode === "stage" && cardHit) {
+      inShelfArea = true;
+    }
+
+    if (inShelfArea) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      step(e.deltaY > 0 ? 1 : -1);
+    }
+  }
+
+  // Click handler
+  function handleClick(e: MouseEvent) {
+    if (!group || !group.parent) return;
+    if (getMode() === "off") return;
+    if (isPointerOverUi(e)) return;
+
+    const rc = raycasterFromPointerEvent(e);
+    const mode = getMode();
+    const hit = raycastCards(rc);
+
+    if (hit) {
+      const idx = hit.index;
+      if (Math.abs(idx - getCenterIdx()) < 0.5) {
+        // Center card clicked → play
+        playback.setCurrentIdx(hit.item.queueIndex);
+      } else {
+        // Non-center card clicked → scroll to it
+        step(idx - getCenterIdx());
       }
     }
   }
 
-  // Raycast for click
-  function raycastCards(raycaster: THREE.Raycaster): { card: any; point: THREE.Vector3 } | null {
-    const meshes = cards.map((c) => c.mesh);
-    const intersects = raycaster.intersectObjects(meshes);
-    if (intersects.length > 0) {
-      const hit = intersects[0];
-      const card = cards.find((c) => c.mesh === hit.object);
-      if (card) return { card, point: hit.point };
+  // Hover handler
+  function handleMouseMove(e: MouseEvent) {
+    if (!group || !group.parent) return;
+    if (getMode() === "off") return;
+    if (isPointerOverUi(e)) { clearSelected(); return; }
+
+    const mode = getMode();
+    if (mode === "side" && !shelf.state.pinnedOpen && !shelfAlwaysVisible()) {
+      clearSelected();
+      return;
     }
-    return null;
+
+    const rc = raycasterFromPointerEvent(e);
+    const hit = raycastCards(rc);
+    if (hit) {
+      setSelected(hit.index);
+    } else {
+      clearSelected();
+    }
+  }
+
+  function attachListeners() {
+    window.addEventListener("wheel", handleWheel, { passive: false, capture: true });
+    window.addEventListener("click", handleClick);
+    window.addEventListener("mousemove", handleMouseMove);
+  }
+
+  function detachListeners() {
+    window.removeEventListener("wheel", handleWheel, { capture: true } as any);
+    window.removeEventListener("click", handleClick);
+    window.removeEventListener("mousemove", handleMouseMove);
+  }
+
+  // Watch for mode changes
+  let lastMode = getMode();
+  function checkModeChange() {
+    const mode = getMode();
+    if (mode !== lastMode || (!group && mode !== "off")) {
+      lastMode = mode;
+      if (mode === "off") {
+        dispose();
+        detachListeners();
+      } else if (scene) {
+        ensureGroup(scene);
+        rebuild();
+        attachListeners();
+      }
+    }
   }
 
   return {
@@ -427,5 +599,12 @@ export function useShelf3D(scene: THREE.Scene | null, camera: THREE.PerspectiveC
     getGroup: () => group,
     setCenterTarget: (idx: number) => { centerTarget = idx; },
     getCenterSmooth: () => centerSmooth,
+    getCenterIdx,
+    step,
+    setSelected,
+    clearSelected,
+    hasOpenContent: () => false,
+    getVisibility: () => shelfVisibility,
+    canInteract: () => shelf.state.pinnedOpen || shelfAlwaysVisible(),
   };
 }

@@ -1791,6 +1791,17 @@ export function useVisualEngine() {
       const skullPresetActive = fx.state.preset === SKULL_PRESET_INDEX;
       if (particles) {
         particles.visible = !skullPresetActive;
+        // Update particles rotation (matches original)
+        const targetRotY = visual.state.headParallax.active ? visual.state.headParallax.x * 0.5 : 0 + visual.state.gestureRotation.y;
+        const targetRotX = visual.state.headParallax.active ? -visual.state.headParallax.y * 0.35 : 0 + visual.state.gestureRotation.x;
+        particles.rotation.y += (targetRotY - particles.rotation.y) * 0.055;
+        particles.rotation.x += (targetRotX - particles.rotation.x) * 0.055;
+        // Expose to visual store for shelf binding
+        visual.set("particlesRotation", {
+          x: particles.rotation.x,
+          y: particles.rotation.y,
+          z: particles.rotation.z,
+        });
       }
       if (bloomParticles) {
         bloomParticles.visible = !skullPresetActive && fx.state.bloom && fx.state.bloomStrength > 0.01;
