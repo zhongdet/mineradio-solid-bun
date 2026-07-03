@@ -3,6 +3,8 @@ import { useHome } from "../stores/homeStore";
 import { usePlayback } from "../stores/playbackStore";
 import { useSettings } from "../stores/settingsStore";
 import { useShelf } from "../stores/shelfStore";
+import { useVisual } from "../stores/visualStore";
+import { useFx } from "../stores/fxStore";
 import { setHomeControlsLocked, revealBottomControls } from "./uiControls";
 import { setPeek } from "./peek";
 
@@ -55,12 +57,38 @@ export function shouldUseIdleWallpaperPreview(ignoreSplash?: boolean): boolean {
 
 export function activateHomeWallpaperPreview(_opts?: { skipTransition?: boolean; instant?: boolean }) {
   document.body.classList.add("home-wallpaper-preview");
+  const visual = useVisual();
+  visual.set("particleAlphaTarget", _opts?.instant ? 0.96 : 0.96);
+  const fx = useFx();
+  if (fx.state.preset !== 5) {
+    fx.setPreset(5, { skipTransition: true, noSave: true });
+  }
 }
 
 export function deactivateHomeWallpaperPreview(_playback?: boolean) {
   document.body.classList.remove("home-wallpaper-preview");
   const home = useHome();
   home.set("homeVisualPresetActive", false);
+  const visual = useVisual();
+  visual.set("particleAlphaTarget", 0);
+}
+
+export function applyStartupStarfieldPreset() {
+  const pb = usePlayback();
+  if (pb.state.playing || pb.state.currentIdx >= 0) return;
+  const fx = useFx();
+  if (fx.state.preset !== 5) {
+    fx.setPreset(5, { skipTransition: true, noSave: true });
+  }
+}
+
+export function switchPlaybackVisualPreset() {
+  document.body.classList.remove("home-wallpaper-preview");
+  const fx = useFx();
+  const targetPreset = typeof fx.state.playbackVisualPreset === "number" ? fx.state.playbackVisualPreset : 0;
+  if (fx.state.preset !== targetPreset) {
+    fx.setPreset(targetPreset, { noSave: true });
+  }
 }
 
 let homeWallpaperPrewarmStarted = false;

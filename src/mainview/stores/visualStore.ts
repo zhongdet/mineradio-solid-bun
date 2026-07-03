@@ -125,6 +125,8 @@ export interface VisualStore {
   headParallax: { x: number; y: number; active: boolean };
   // Particles rotation (exposed for shelf binding)
   particlesRotation: { x: number; y: number; z: number };
+  // Particle alpha target for homepage wallpaper fade-in
+  particleAlphaTarget: number;
   // Gesture rotation
   gestureRotation: { x: number; y: number; inertia: number };
   // Cover texture for Three.js
@@ -223,6 +225,7 @@ const [visual, setVisual] = createStore<VisualStore>({
   lyricSunPeak: 0.55,
   pointerParallax: { x: 0, y: 0 },
   particlesRotation: { x: 0, y: 0, z: 0 },
+  particleAlphaTarget: 0,
   pointerTarget: { x: 0, y: 0 },
   headParallax: { x: 0, y: 0, active: false },
   gestureRotation: { x: 0, y: 0, inertia: 0 },

@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { Component, onMount, onCleanup } from "solid-js";
 import { useSplashAnimation } from "../../hooks/useSplashAnimation";
-import { updateEmptyHomeVisibility, shouldForceEmptyHomeAfterSplash } from "../../lib/homeVisibility";
+import { updateEmptyHomeVisibility, shouldForceEmptyHomeAfterSplash, prewarmHomeWallpaperPreview, applyStartupStarfieldPreset } from "../../lib/homeVisibility";
 import { maybeRunStartupVisualGuide, maybeRunStartupLoginGuide, maybeShowUploadTipOnce } from "../../lib/startupGuides";
 
 const Splash: Component = () => {
@@ -76,6 +76,8 @@ const Splash: Component = () => {
   onMount(() => {
     perf("dom-content-loaded");
     document.body.classList.add("splash-active");
+    prewarmHomeWallpaperPreview();
+    applyStartupStarfieldPreset();
 
     if (splashEl) {
       splashEl.addEventListener("click", requestEnter);

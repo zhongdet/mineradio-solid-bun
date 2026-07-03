@@ -818,8 +818,8 @@ export function useVisualEngine() {
       uLoading: { value: 0 },
     };
 
-    // Build initial geometry
-    currentGrid = coverParticleGridForResolution(1.0);
+    // Build initial geometry (match original default: coverResolution = 1.55)
+    currentGrid = coverParticleGridForResolution(fx.state.coverResolution || 1.55);
     currentGeometry = buildCoverParticleGeometry(currentGrid);
 
     createParticles();
@@ -904,8 +904,30 @@ export function useVisualEngine() {
     };
     renderer.domElement.addEventListener("dblclick", handleDblClick);
 
+    // Watch for cover resolution changes
+    const disposeResolutionWatcher = createEffect(() => {
+      const resolution = fx.state.coverResolution;
+      applyCoverParticleResolution(resolution);
+    });
+
     startRenderLoop();
     console.log("[Mineradio] Three.js initialized");
+  }
+
+  function applyCoverParticleResolution(value: number) {
+    const grid = coverParticleGridForResolution(value);
+    if (grid === currentGrid && currentGeometry && currentGeometry.userData.grid === grid) return;
+
+    const oldGeo = currentGeometry;
+    currentGeometry = buildCoverParticleGeometry(grid);
+    currentGrid = grid;
+
+    if (particles) particles.geometry = currentGeometry;
+    if (bloomParticles) bloomParticles.geometry = currentGeometry;
+    if (oldGeo && oldGeo !== currentGeometry) oldGeo.dispose();
+
+    // Trigger burst effect on resolution change
+    if (uniforms) uniforms.uBurstAmt.value = Math.max(uniforms.uBurstAmt.value, 0.18);
   }
 
   function buildCoverParticleGeometry(grid: number) {
@@ -1722,6 +1744,14 @@ export function useVisualEngine() {
           lyricSunAvg: visual.state.lyricSunAvg * 0.995,
           lyricSunPeak: Math.max(0.48, visual.state.lyricSunPeak * 0.997),
         });
+
+        // Interpolate particle alpha toward target (homepage wallpaper)
+        const alphaTarget = visual.state.particleAlphaTarget;
+        if (alphaTarget > 0.01) {
+          uniforms.uAlpha.value += (alphaTarget - uniforms.uAlpha.value) * Math.min(1, dt * 1.2);
+        } else if (uniforms.uAlpha.value > 0.01) {
+          uniforms.uAlpha.value *= 0.92;
+        }
       }
 
       // Final bass/mid/treble with intensity scaling

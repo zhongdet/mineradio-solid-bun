@@ -220,26 +220,39 @@ const [fx, setFx] = createStore<FxStore>(initialFx);
 export function useFx() {
   return {
     state: fx,
-    setPreset: (preset: number) => {
+    setPreset: (preset: number, opts?: { skipTransition?: boolean; noSave?: boolean }) => {
       const from = fx.preset;
       const to = Math.max(0, Math.min(6, preset));
       if (from === to) return;
-      setFx("presetTransition", {
-        active: true,
-        start: performance.now(),
-        duration: 0.92,
-        from,
-        to,
-      });
+      if (opts?.skipTransition) {
+        setFx("presetTransition", {
+          active: false,
+          start: performance.now(),
+          duration: 0,
+          from: to,
+          to,
+        });
+      } else {
+        setFx("presetTransition", {
+          active: true,
+          start: performance.now(),
+          duration: 0.92,
+          from,
+          to,
+        });
+      }
       setFx("preset", to);
-      setFx("playbackVisualPreset", to);
-      // Save to localStorage
-      try {
-        const saved = JSON.parse(localStorage.getItem(LYRIC_LAYOUT_STORE_KEY) || '{}') || {};
-        saved.preset = to;
-        saved.visualPresetSchema = VISUAL_PRESET_SCHEMA;
-        localStorage.setItem(LYRIC_LAYOUT_STORE_KEY, JSON.stringify(saved));
-      } catch { /* ignore */ }
+      if (!opts?.noSave) {
+        setFx("playbackVisualPreset", to);
+      }
+      if (!opts?.noSave) {
+        try {
+          const saved = JSON.parse(localStorage.getItem(LYRIC_LAYOUT_STORE_KEY) || '{}') || {};
+          saved.preset = to;
+          saved.visualPresetSchema = VISUAL_PRESET_SCHEMA;
+          localStorage.setItem(LYRIC_LAYOUT_STORE_KEY, JSON.stringify(saved));
+        } catch { /* ignore */ }
+      }
     },
     set: (key: keyof FxStore, value: any) => {
       setFx(key, value);

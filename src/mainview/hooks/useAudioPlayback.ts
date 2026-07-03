@@ -4,7 +4,7 @@ import { useVisual } from "../stores/visualStore";
 import { useLyrics } from "../stores/lyricsStore";
 import { rpc, qqApi, proxyImageUrl } from "../lib/api";
 import { forcePlaybackControlsInteractive } from "../lib/uiControls";
-import { updateEmptyHomeVisibility } from "../lib/homeVisibility";
+import { updateEmptyHomeVisibility, switchPlaybackVisualPreset } from "../lib/homeVisibility";
 import { createEffect, onCleanup } from "solid-js";
 
 interface PlayQueueAtOpts {
@@ -228,6 +228,7 @@ export function useAudioPlayback() {
       await audio.state.audio.play();
       audio.set("audioReady", true);
       playback.set("playing", true);
+      switchPlaybackVisualPreset();
       return true;
     } catch (err) {
       console.warn("Audio play blocked:", err);
