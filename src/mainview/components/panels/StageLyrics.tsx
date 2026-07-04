@@ -44,7 +44,7 @@ const StageLyrics: Component = () => {
 
   onCleanup(() => cancelAnimationFrame(animFrame));
 
-  const show = () => lineText() && fx.state.particleLyrics;
+  const show = () => lineText() && !fx.state.particleLyrics;
 
   return (
     <div id="stage-lyrics" ref={containerRef}

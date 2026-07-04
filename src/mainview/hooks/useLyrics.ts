@@ -2,6 +2,11 @@ import { useLyrics } from "../stores/lyricsStore";
 import { useVisual } from "../stores/visualStore";
 import { useAudio } from "../stores/audioStore";
 import { rpc } from "../lib/api";
+import {
+  tickLyricsParticles as tickLyricsParticles3D,
+  updateStageLyrics3D as updateStageLyrics3D3D,
+  initStageLyrics3D,
+} from "./useStageLyrics3D";
 
 export function useLyricsHook() {
   const lyrics = useLyrics();
@@ -128,18 +133,45 @@ export function useLyricsHook() {
     return idx;
   }
 
+  let threejsRefs: any = null;
+
   function tickLyricsParticles(_dt: number) {
     // Update lyric sun energy
     const ls = visual.state;
     ls.lyricSunTarget = Math.min(1, ls.audioEnergy * 3 + ls.bass * 2);
     ls.lyricSunEnergy = ls.lyricSunEnergy * 0.9 + ls.lyricSunTarget * 0.1;
     ls.lyricSunAvg = ls.lyricSunAvg * 0.99 + ls.lyricSunEnergy * 0.01;
+
+    // Call 3D lyrics tick if refs are initialized
+    if (threejsRefs) {
+      tickLyricsParticles3D(_dt || 0.016);
+    }
   }
 
   function updateStageLyrics3D(_dt: number) {
     // Update current lyric index for display
     updateCurrentLyricIndex();
-    // 3D positioning would be handled by the visual engine hook
+
+    // Call 3D positioning if refs are initialized
+    if (threejsRefs) {
+      const dt = _dt || 0.016;
+      updateStageLyrics3D3D(dt);
+    }
+  }
+
+  // Called from visual engine to pass Three.js references
+  function setThreeJsRefs(refs: any) {
+    threejsRefs = refs;
+    console.log("[Lyrics3D] setThreeJsRefs:", { scene: !!refs?.scene, camera: !!refs?.camera, renderer: !!refs?.renderer, uniforms: !!refs?.uniforms, particles: !!refs?.particles, beatCam: !!refs?.beatCam, beatPulse: refs?.beatPulse });
+    initStageLyrics3D(
+      refs.scene,
+      refs.camera,
+      refs.renderer,
+      refs.uniforms,
+      refs.particles,
+      refs.beatCam,
+      refs.beatPulse,
+    );
   }
 
   return {
@@ -152,6 +184,7 @@ export function useLyricsHook() {
     updateCurrentLyricIndex,
     tickLyricsParticles,
     updateStageLyrics3D,
+    setThreeJsRefs,
   };
 }
 

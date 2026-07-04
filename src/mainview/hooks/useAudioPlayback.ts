@@ -338,11 +338,13 @@ export function useAudioPlayback() {
   // ── Fetch Lyrics ──
 
   async function fetchLyric(song: any, _token: number) {
+    console.log("[Playback] fetchLyric", { songId: song.id, songName: song.name || song.title });
     try {
       const data = await rpc<any>("lyric", { id: String(song.id) });
-      if (!data) return null;
+      if (!data) { console.warn("[Playback] fetchLyric: no data"); return null; }
       const lines: any[] = [];
       const raw = data.lrc?.lyric || "";
+      console.log("[Playback] fetchLyric lrc length:", raw.length, "krc:", !!data.krc);
       const regex = /\[(\d+):(\d+\.\d+)\](.*)/g;
       let match;
       while ((match = regex.exec(raw)) !== null) {
@@ -356,6 +358,7 @@ export function useAudioPlayback() {
         if (i < lines.length - 1) lines[i].duration = lines[i + 1].time - lines[i].time;
       }
       const hasKaraoke = !!data.krc?.lyric;
+      console.log("[Playback] fetchLyric parsed", { lineCount: lines.length });
       lyrics.set("lines", lines);
       lyrics.set("hasNativeKaraoke", hasKaraoke);
       lyrics.set("timingSource", hasKaraoke ? "krc" : "lrc");

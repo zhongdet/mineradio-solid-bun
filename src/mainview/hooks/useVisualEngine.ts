@@ -6,8 +6,9 @@ import { usePerformance } from "./usePerformance";
 import { useShelf3D } from "./useShelf3D";
 import { useGesture } from "./useGesture";
 import { setPeek } from "../lib/peek";
-import { useSettings } from "../stores/settingsStore";
 import { useHome } from "../stores/homeStore";
+import { useLyricsHook } from "../hooks/useLyrics";
+import { updateLyricPaletteFromCover } from "../hooks/useStageLyrics3D";
 
 declare const THREE: any;
 
@@ -603,6 +604,7 @@ export function useVisualEngine() {
   const audio = useAudio();
   const fx = useFx();
   const perf = usePerformance();
+  const lyricsHook = useLyricsHook();
 
   // Three.js objects
   let scene: any = null;
@@ -897,6 +899,18 @@ export function useVisualEngine() {
     createBloomParticles();
     createFloatLayer();
 
+    // Set up Three.js refs for lyrics system
+    const threeJsRefs = {
+      scene,
+      camera,
+      renderer,
+      uniforms,
+      particles,
+      beatCam: visual.state.beatCam,
+      beatPulse: beatPulseLocal,
+    };
+    lyricsHook.setThreeJsRefs(threeJsRefs);
+
     // Resize
     const handleResize = () => {
       if (!camera || !renderer) return;
@@ -921,7 +935,6 @@ export function useVisualEngine() {
       const sa = document.getElementById("search-area");
       if (!sa) return;
       
-      const settings = useSettings();
       const home = useHome();
       const ey = e.clientY;
       const ex = e.clientX;
@@ -996,7 +1009,7 @@ export function useVisualEngine() {
     renderer.domElement.addEventListener("dblclick", handleDblClick);
 
     // Watch for cover resolution changes
-    const disposeResolutionWatcher = createEffect(() => {
+    createEffect(() => {
       const resolution = fx.state.coverResolution;
       applyCoverParticleResolution(resolution);
     });
@@ -1666,6 +1679,9 @@ export function useVisualEngine() {
 
         // Refresh back cover colors
         if (backCoverGroup) refreshBackCoverColorsFromCanvas(cv);
+
+        // Extract palette from cover for lyric colors
+        updateLyricPaletteFromCover(cv);
       } catch { /* ignore texture errors */ }
     };
     img.onerror = () => { /* ignore load errors */ };
@@ -1679,8 +1695,10 @@ export function useVisualEngine() {
   function startRenderLoop() {
     prevTime = performance.now();
 
-    function animate() {
+    let _frameCount = 0;
+function animate() {
       animFrameId = requestAnimationFrame(animate);
+      _frameCount++;
 
       // Update queued particle pointer frame (Raycaster-based, original algorithm)
       updateParticlePointerFrame();
@@ -1968,6 +1986,10 @@ export function useVisualEngine() {
         uniforms.uHandActive.value *= 0.9;
         uniforms.uGestureGrip.value *= 0.9;
       }
+
+      // Update 3D stage lyrics
+      lyricsHook.tickLyricsParticles(dt);
+      lyricsHook.updateStageLyrics3D(dt);
 
       renderer.render(scene, camera);
     }
