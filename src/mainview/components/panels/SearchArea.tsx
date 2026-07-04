@@ -14,6 +14,7 @@ const SearchArea: Component = () => {
   const ui = useUi();
   const settings = useSettings();
   const [query, setQuery] = createSignal("");
+  const [isFocused, setIsFocused] = createSignal(false);
   let searchTimer: ReturnType<typeof setTimeout> | null = null;
 
   function handleInput(value: string) {
@@ -123,7 +124,7 @@ const SearchArea: Component = () => {
   }
 
   return (
-    <div id="search-area" classList={{ "has-results": query().trim().length > 0 || search.state.history.length > 0 }}>
+    <div id="search-area" classList={{ "has-results": (query().trim().length > 0 || search.state.history.length > 0) && isFocused() }}>
       <div id="search-stack">
         <form id="search-box" onSubmit={handleSubmit}>
           <svg id="search-icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -138,6 +139,7 @@ const SearchArea: Component = () => {
             value={query()}
             onInput={(e) => handleInput(e.currentTarget.value)}
             onFocus={() => {
+              setIsFocused(true);
               if (!query().trim()) {
                 search.setSearchResults([]);
                 search.setPodcastResults([]);
@@ -146,6 +148,7 @@ const SearchArea: Component = () => {
                 }
               }
             }}
+            onBlur={() => setIsFocused(false)}
           />
         </form>
 
@@ -170,7 +173,7 @@ const SearchArea: Component = () => {
           </For>
         </div>
 
-        <div id="search-results" classList={{ show: (query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading)) || search.state.history.length > 0 }}>
+        <div id="search-results" classList={{ show: (query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading)) || (search.state.history.length > 0 && isFocused()) }}>
           <Show when={search.state.loading}>
             <div class="search-loading">搜索中...</div>
           </Show>
