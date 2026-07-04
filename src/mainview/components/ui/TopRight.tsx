@@ -3,7 +3,7 @@ import { Component, Show } from "solid-js";
 import { useAuth } from "../../stores/authStore";
 import { useHome } from "../../stores/homeStore";
 import { useSettings } from "../../stores/settingsStore";
-import { setHomeControlsLocked } from "../../lib/uiControls";
+import { updateEmptyHomeVisibility } from "../../lib/homeVisibility";
 
 const TopRight: Component = () => {
   const auth = useAuth();
@@ -13,17 +13,13 @@ const TopRight: Component = () => {
   function goHome() {
     const isActive = document.body.classList.contains("empty-home-active");
     if (isActive) {
-      document.body.classList.remove("empty-home-active");
-      home.setEmptyHomeActive(false);
+      home.set("homeForcedOpen", false);
       home.setHomeSuppressed(true);
-      setHomeControlsLocked(false);
     } else {
-      document.body.classList.add("empty-home-active");
-      home.setEmptyHomeActive(true);
-      home.setHomeSuppressed(false);
       home.set("homeForcedOpen", true);
-      setHomeControlsLocked(true);
+      home.setHomeSuppressed(false);
     }
+    updateEmptyHomeVisibility();
   }
 
   return (

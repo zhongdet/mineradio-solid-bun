@@ -5,6 +5,7 @@ import { usePlayback } from "../../stores/playbackStore";
 import { useSettings } from "../../stores/settingsStore";
 import { useUser } from "../../stores/userStore";
 import { useActionStore } from "../../stores/actionStore";
+import { updateEmptyHomeVisibility } from "../../lib/homeVisibility";
 
 const PlaylistPanel: Component = () => {
   const playback = usePlayback();
@@ -31,6 +32,7 @@ const PlaylistPanel: Component = () => {
     playback.set("currentIdx", idx);
     playback.set("currentSong", song);
     useActionStore.getState().hotkey("togglePlay");
+    updateEmptyHomeVisibility();
   }
 
   function loadPlaylist(pl: any) {
@@ -80,7 +82,7 @@ const PlaylistPanel: Component = () => {
             <div id="play-mode-chip" class="queue-chip">{playModeLabel()}</div>
             <div style={{ display: "flex", gap: "6px" }}>
               <button class="fx-mini-btn ghost" onClick={() => playback.cyclePlayMode()} style={{ height: "26px", padding: "0 10px", "font-size": "11px" }}>切换模式</button>
-              <button class="fx-mini-btn ghost" onClick={() => playback.clearQueue()} style={{ height: "26px", padding: "0 10px", "font-size": "11px" }}>清空</button>
+              <button class="fx-mini-btn ghost" onClick={() => { playback.clearQueue(); updateEmptyHomeVisibility(); }} style={{ height: "26px", padding: "0 10px", "font-size": "11px" }}>清空</button>
             </div>
           </div>
           <div id="queue-list" class="queue-list">

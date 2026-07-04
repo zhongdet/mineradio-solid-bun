@@ -1,4 +1,5 @@
 import { useAudio } from "../stores/audioStore";
+import { useHome } from "../stores/homeStore";
 import { usePlayback } from "../stores/playbackStore";
 import { useVisual } from "../stores/visualStore";
 import { useLyrics } from "../stores/lyricsStore";
@@ -145,7 +146,11 @@ export function useAudioPlayback() {
     // Update UI: album background, thumb wrap, bottom bar, mini queue
     updateNowPlayingUI(song);
 
-    // Hide empty home, show controls
+    // Dismiss empty home and show controls — always reset home flags so
+    // any playback path (search, playlist load, etc.) properly hides home
+    const home = useHome();
+    home.set("homeForcedOpen", false);
+    home.setHomeSuppressed(false);
     updateEmptyHomeVisibility();
     forcePlaybackControlsInteractive();
 
@@ -310,10 +315,12 @@ export function useAudioPlayback() {
 
   function clearQueue() {
     playback.clearQueue();
+    updateEmptyHomeVisibility();
   }
 
   function removeFromQueue(idx: number) {
     playback.removeFromQueue(idx);
+    updateEmptyHomeVisibility();
   }
 
   function getPlayModeIcon(mode: string): string {
