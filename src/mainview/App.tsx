@@ -20,6 +20,7 @@ import { useHomeDiscover } from "./hooks/useHomeDiscover";
 import { usePerformance } from "./hooks/usePerformance";
 import { useDesktopLyrics } from "./hooks/useDesktopLyrics";
 import { useIdleGuide } from "./hooks/useIdleGuide";
+import { useControlGlass } from "./hooks/useControlGlass";
 import { handleHomeTileClick } from "./lib/homeDiscover";
 import { playHomeSong, playHomeRecent } from "./lib/homeActions";
 
@@ -37,6 +38,7 @@ const App: Component = () => {
   usePerformance();
   useDesktopLyrics();
   useIdleGuide();
+  useControlGlass();
 
   // Register playback bridge so homeActions can call playQueueAt
   registerPlaybackBridge({

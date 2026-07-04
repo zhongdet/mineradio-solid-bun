@@ -14,3 +14,4 @@ export { useSplashAnimation } from "./useSplashAnimation";
 export { useVisualEngine } from "./useVisualEngine";
 export { useIdleGuide } from "./useIdleGuide";
 export { useDesktopLyrics } from "./useDesktopLyrics";
+export { useControlGlass } from "./useControlGlass";
