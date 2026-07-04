@@ -23,6 +23,7 @@ import { useIdleGuide } from "./hooks/useIdleGuide";
 import { useControlGlass } from "./hooks/useControlGlass";
 import { handleHomeTileClick } from "./lib/homeDiscover";
 import { playHomeSong, playHomeRecent } from "./lib/homeActions";
+import { useActionStore } from "./stores/actionStore";
 
 const App: Component = () => {
   // Initialize all hooks — they self-register via createEffect
@@ -57,22 +58,11 @@ const App: Component = () => {
     // Set up tile click handlers
     (window as any).handleHomeTileClick = handleHomeTileClick;
 
-    // Set up home event listeners
-    const onPlayHomeSong = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.index != null) playHomeSong(detail.index);
-    };
-    const onPlayHomeRecent = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.record) playHomeRecent(detail.record);
-    };
-    window.addEventListener("mineradio-play-home-song", onPlayHomeSong);
-    window.addEventListener("mineradio-play-home-recent", onPlayHomeRecent);
-
-    return () => {
-      window.removeEventListener("mineradio-play-home-song", onPlayHomeSong);
-      window.removeEventListener("mineradio-play-home-recent", onPlayHomeRecent);
-    };
+    // Register home actions with actionStore
+    useActionStore.getState().register({
+      playHomeSong: (index) => playHomeSong(index),
+      playHomeRecent: (record) => playHomeRecent(record),
+    });
   });
 
   return (

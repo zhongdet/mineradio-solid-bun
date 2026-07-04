@@ -4,6 +4,7 @@ import { useSearch } from "../../stores/searchStore";
 import { usePlayback } from "../../stores/playbackStore";
 import { useUi } from "../../stores/uiStore";
 import { useSettings } from "../../stores/settingsStore";
+import { useActionStore } from "../../stores/actionStore";
 import { proxyImageUrl } from "../../lib/api";
 import { getPlayQueueAt } from "../../lib/playbackBridge";
 
@@ -21,12 +22,12 @@ const SearchArea: Component = () => {
     searchTimer = setTimeout(() => {
       const q = value.trim();
       if (q) {
-        window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: search.state.mode } }));
+        useActionStore.getState().search(q, search.state.mode);
       } else {
         search.setSearchResults([]);
         search.setPodcastResults([]);
         if (search.state.mode === "podcast") {
-          window.dispatchEvent(new CustomEvent("mineradio-podcast-hot"));
+          useActionStore.getState().podcastHot();
         }
       }
     }, 300);
@@ -39,22 +40,26 @@ const SearchArea: Component = () => {
     { key: "podcast", label: "Podcast" },
   ] as const;
 
-  // Listen for home search requests
-  let homeSearchHandler: ((e: Event) => void) | null = null;
+  // Listen for home search requests via actionStore
+  let unsubHomeSearch: (() => void) | null = null;
   onMount(() => {
-    homeSearchHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.query != null) {
-        setQuery(detail.query);
-        window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: detail.query, mode: search.state.mode } }));
+    const store = useActionStore;
+    unsubHomeSearch = store.subscribe((state) => {
+      // We use a dirty flag pattern: homeSearch action sets a pending value
+      // For now, we use a simpler approach: override the homeSearch callback
+    });
+    // Override the homeSearch callback to also update this component
+    useActionStore.getState().register({
+      homeSearch: (query: string) => {
+        setQuery(query);
+        useActionStore.getState().search(query, search.state.mode);
         const input = document.getElementById("search-input") as HTMLInputElement | null;
         if (input) input.focus();
-      }
-    };
-    window.addEventListener("mineradio-home-search", homeSearchHandler);
+      },
+    });
   });
   onCleanup(() => {
-    if (homeSearchHandler) window.removeEventListener("mineradio-home-search", homeSearchHandler);
+    if (unsubHomeSearch) unsubHomeSearch();
     if (searchTimer) clearTimeout(searchTimer);
   });
 
@@ -62,7 +67,7 @@ const SearchArea: Component = () => {
     e.preventDefault();
     const q = query().trim();
     if (!q) return;
-    window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: search.state.mode } }));
+    useActionStore.getState().search(q, search.state.mode);
   }
 
   async function playSearchResult(idx: number) {
@@ -79,21 +84,21 @@ const SearchArea: Component = () => {
   function openSearchResultArtist(idx: number) {
     const song = search.state.results[idx];
     if (song?.artistId) {
-      window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: song.artist, mode: "netease" } }));
+      useActionStore.getState().search(song.artist, "netease");
     }
   }
 
   function toggleLikeSearchResult(idx: number) {
     const song = search.state.results[idx];
     if (song) {
-      window.dispatchEvent(new CustomEvent("mineradio-toggle-like", { detail: { song, idx } }));
+      useActionStore.getState().toggleLike(song, idx());
     }
   }
 
   function collectSearchResult(idx: number) {
     const song = search.state.results[idx];
     if (song) {
-      window.dispatchEvent(new CustomEvent("mineradio-collect-song", { detail: { song } }));
+      useActionStore.getState().collectSong(song);
     }
   }
 
@@ -137,7 +142,7 @@ const SearchArea: Component = () => {
                 search.setSearchResults([]);
                 search.setPodcastResults([]);
                 if (search.state.mode === "podcast") {
-                  window.dispatchEvent(new CustomEvent("mineradio-podcast-hot"));
+                  useActionStore.getState().podcastHot();
                 }
               }
             }}
@@ -154,7 +159,7 @@ const SearchArea: Component = () => {
                 onClick={() => {
                   search.setSearchMode(m.key as any);
                   if (m.key === "podcast") {
-                    window.dispatchEvent(new CustomEvent("mineradio-podcast-hot"));
+                    useActionStore.getState().podcastHot();
                   }
                 }}
                 aria-selected={search.state.mode === m.key}
@@ -236,7 +241,7 @@ const SearchArea: Component = () => {
                       e.stopPropagation();
                       const q = h.query;
                       setQuery(q);
-                      window.dispatchEvent(new CustomEvent("mineradio-search", { detail: { query: q, mode: h.mode || search.state.mode } }));
+                      useActionStore.getState().search(q, h.mode || search.state.mode);
                     }}>{h.query}</button>
                   )}
                 </For>

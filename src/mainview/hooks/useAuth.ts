@@ -1,6 +1,7 @@
-import { createEffect, onCleanup } from "solid-js";
+import { createEffect } from "solid-js";
 import { useAuth } from "../stores/authStore";
 import { useUser } from "../stores/userStore";
+import { useActionStore } from "../stores/actionStore";
 import { rpc } from "../lib/api";
 
 export function useAuthHook() {
@@ -209,49 +210,26 @@ export function useAuthHook() {
     }
   }
 
-  // Wire up custom event listeners
-  let openWebLoginHandler: ((e: Event) => void) | null = null;
-  let submitQQCookieHandler: ((e: Event) => void) | null = null;
-  let logoutHandler: (() => void) | null = null;
-  let refreshLoginStatusHandler: (() => void) | null = null;
-  let toggleLikeHandler: ((e: Event) => void) | null = null;
-  let collectSongHandler: ((e: Event) => void) | null = null;
-
+  // Register with actionStore so components can call actions directly
   createEffect(() => {
-    openWebLoginHandler = () => {
-      if (auth.state.loginProvider === 'qq') openQQWebLogin();
-      else openNeteaseWebLogin();
-    };
-    submitQQCookieHandler = () => {
-      const input = document.getElementById('qq-cookie-input') as HTMLTextAreaElement | null;
-      submitQQCookie(input?.value || '');
-    };
-    logoutHandler = () => logoutActiveAccount();
-    refreshLoginStatusHandler = () => refreshLoginStatus();
-    toggleLikeHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.song) toggleLikeSong(String(detail.song.id || detail.song.mid));
-    };
-    collectSongHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.song) user.openCollectModal(detail.song);
-    };
-
-    window.addEventListener("mineradio-open-web-login", openWebLoginHandler);
-    window.addEventListener("mineradio-submit-qq-cookie", submitQQCookieHandler);
-    window.addEventListener("mineradio-logout", logoutHandler);
-    window.addEventListener("mineradio-refresh-login-status", refreshLoginStatusHandler);
-    window.addEventListener("mineradio-toggle-like", toggleLikeHandler);
-    window.addEventListener("mineradio-collect-song", collectSongHandler);
-  });
-
-  onCleanup(() => {
-    if (openWebLoginHandler) window.removeEventListener("mineradio-open-web-login", openWebLoginHandler);
-    if (submitQQCookieHandler) window.removeEventListener("mineradio-submit-qq-cookie", submitQQCookieHandler);
-    if (logoutHandler) window.removeEventListener("mineradio-logout", logoutHandler);
-    if (refreshLoginStatusHandler) window.removeEventListener("mineradio-refresh-login-status", refreshLoginStatusHandler);
-    if (toggleLikeHandler) window.removeEventListener("mineradio-toggle-like", toggleLikeHandler);
-    if (collectSongHandler) window.removeEventListener("mineradio-collect-song", collectSongHandler);
+    useActionStore.getState().register({
+      openWebLogin: () => {
+        if (auth.state.loginProvider === 'qq') openQQWebLogin();
+        else openNeteaseWebLogin();
+      },
+      submitQQCookie: (cookie) => {
+        if (cookie !== undefined) {
+          submitQQCookie(cookie);
+        } else {
+          const input = document.getElementById('qq-cookie-input') as HTMLTextAreaElement | null;
+          submitQQCookie(input?.value || '');
+        }
+      },
+      logout: () => logoutActiveAccount(),
+      refreshLoginStatus: () => refreshLoginStatus(),
+      toggleLike: (songId) => toggleLikeSong(songId),
+      collectSong: (song) => user.openCollectModal(song),
+    });
   });
 
   return {

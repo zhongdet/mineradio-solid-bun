@@ -1,7 +1,8 @@
-import { createEffect, onCleanup, onMount } from "solid-js";
+import { createEffect, onMount } from "solid-js";
 import { useUser } from "../stores/userStore";
 import { useAuth } from "../stores/authStore";
 import { usePlayback } from "../stores/playbackStore";
+import { useActionStore } from "../stores/actionStore";
 import { rpc } from "../lib/api";
 import { getPlayQueueAt, getForcePlaybackControlsInteractive } from "../lib/playbackBridge";
 
@@ -41,7 +42,7 @@ export function usePlaylists() {
     }
   });
 
-  async function loadPlaylistIntoQueueById(id: string, autoPlay: boolean = true, name: string = "") {
+  async function loadPlaylistIntoQueueById(id: string, autoPlay: boolean = true) {
     try {
       const data = await rpc<any>("playlist_track_all", { id, limit: 1000 });
       const songs = (data.songs || []).map((s: any) => ({
@@ -65,21 +66,12 @@ export function usePlaylists() {
     }
   }
 
-  // Listen for playlist refresh and load requests
-  let refreshHandler: (() => void) | null = null;
-  let loadHandler: ((e: Event) => void) | null = null;
+  // Register with actionStore so components can call actions directly
   createEffect(() => {
-    refreshHandler = () => doRefreshUserPlaylists(true);
-    loadHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.id) loadPlaylistIntoQueueById(detail.id, true, detail.name || "");
-    };
-    window.addEventListener("mineradio-do-refresh-playlists", refreshHandler);
-    window.addEventListener("mineradio-load-playlist", loadHandler);
-  });
-  onCleanup(() => {
-    if (refreshHandler) window.removeEventListener("mineradio-do-refresh-playlists", refreshHandler);
-    if (loadHandler) window.removeEventListener("mineradio-load-playlist", loadHandler);
+    useActionStore.getState().register({
+      refreshPlaylists: () => doRefreshUserPlaylists(true),
+      loadPlaylist: (id, _name) => loadPlaylistIntoQueueById(id, true),
+    });
   });
 
   async function toggleLikeSong(song: any) {

@@ -4,6 +4,7 @@ import { Component, createSignal, onMount, onCleanup, For, Show, createMemo } fr
 import { usePlayback } from "../../stores/playbackStore";
 import { useSettings } from "../../stores/settingsStore";
 import { useUser } from "../../stores/userStore";
+import { useActionStore } from "../../stores/actionStore";
 
 const PlaylistPanel: Component = () => {
   const playback = usePlayback();
@@ -11,24 +12,11 @@ const PlaylistPanel: Component = () => {
   const user = useUser();
   const [tab, setTab] = createSignal<"queue" | "playlists" | "podcasts">("queue");
 
-  // Listen for external tab switch requests (from homeActions, etc.)
-  let tabHandler: ((e: Event) => void) | null = null;
-  let refreshHandler: (() => void) | null = null;
+  // Listen for external tab switch requests via actionStore
   onMount(() => {
-    tabHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.tab) setTab(detail.tab as any);
-    };
-    window.addEventListener("mineradio-playlist-tab", tabHandler);
-    refreshHandler = () => {
-      // Trigger playlist refresh via the usePlaylists hook
-      window.dispatchEvent(new CustomEvent("mineradio-do-refresh-playlists"));
-    };
-    window.addEventListener("mineradio-refresh-playlists", refreshHandler);
-  });
-  onCleanup(() => {
-    if (tabHandler) window.removeEventListener("mineradio-playlist-tab", tabHandler);
-    if (refreshHandler) window.removeEventListener("mineradio-refresh-playlists", refreshHandler);
+    useActionStore.getState().register({
+      setPlaylistTab: (tab: string) => setTab(tab as any),
+    });
   });
 
   const playModeLabel = () => {
@@ -42,11 +30,11 @@ const PlaylistPanel: Component = () => {
   function playSong(song: any, idx: number) {
     playback.set("currentIdx", idx);
     playback.set("currentSong", song);
-    window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: "togglePlay" }));
+    useActionStore.getState().hotkey("togglePlay");
   }
 
   function loadPlaylist(pl: any) {
-    window.dispatchEvent(new CustomEvent("mineradio-load-playlist", { detail: { id: pl.id, name: pl.name } }));
+    useActionStore.getState().loadPlaylist(pl.id, pl.name);
   }
 
   const groupedPlaylists = createMemo(() => {

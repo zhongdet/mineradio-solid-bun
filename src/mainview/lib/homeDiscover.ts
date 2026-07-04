@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { useHome } from "../stores/homeStore";
 import { useAuth } from "../stores/authStore";
+import { useActionStore } from "../stores/actionStore";
 import { hasAnyPlatformLogin } from "./platformLogin";
 
 function escHtml(s: string): string {
@@ -244,34 +245,39 @@ export function handleHomeTileClick(index: number): void {
   if (!item) return;
 
   if (item.kind === "weatherSong") {
-    window.dispatchEvent(new CustomEvent("mineradio-play-weather-song", { detail: { index: item.index } }));
+    // Dead code: no receiver for weather songs, play via homeSong fallback
+    const home = useHome();
+    const song = home.state.homeDiscoverState.songs[item.index];
+    if (song) {
+      useActionStore.getState().playHomeSong(item.index);
+    }
   } else if (item.kind === "recent") {
-    window.dispatchEvent(new CustomEvent("mineradio-play-home-recent", { detail: { record: item.record } }));
+    useActionStore.getState().playHomeRecent(item.record);
   } else if (item.kind === "profile") {
     if (item.query) {
-      window.dispatchEvent(new CustomEvent("mineradio-home-search", { detail: { query: item.query } }));
-    } else {
-      window.dispatchEvent(new CustomEvent("mineradio-home-insight"));
+      useActionStore.getState().homeSearch(item.query);
     }
   } else if (item.kind === "song") {
-    window.dispatchEvent(new CustomEvent("mineradio-play-home-song", { detail: { index: item.index } }));
+    useActionStore.getState().playHomeSong(item.index);
   } else if (item.kind === "login") {
-    window.dispatchEvent(new CustomEvent("mineradio-show-login-modal", { detail: { source: "home-tile" } }));
-  } else if (item.kind === "local") {
-    window.dispatchEvent(new CustomEvent("mineradio-home-local-import"));
-  } else if (item.kind === "guide") {
-    window.dispatchEvent(new CustomEvent("mineradio-home-product-guide"));
+    const auth = useAuth();
+    if (!hasAnyPlatformLogin()) {
+      auth.showLoginModal();
+    } else {
+      useActionStore.getState().playlistTab("playlists");
+      useActionStore.getState().refreshPlaylists();
+    }
   } else if (item.kind === "playlist") {
-    window.dispatchEvent(new CustomEvent("mineradio-play-home-playlist", { detail: { index: item.index } }));
+    // Dead code: no receiver for playlist clicks
   } else if (item.kind === "podcast") {
-    window.dispatchEvent(new CustomEvent("mineradio-play-home-podcast", { detail: { index: item.index } }));
+    // Dead code: no receiver for podcast clicks
   } else if (item.kind === "podcastSearch") {
-    window.dispatchEvent(new CustomEvent("mineradio-set-search-mode", { detail: { mode: "podcast" } }));
-    window.dispatchEvent(new CustomEvent("mineradio-load-podcast-hot"));
-  } else if (item.kind === "library") {
-    window.dispatchEvent(new CustomEvent("mineradio-home-library"));
+    useActionStore.getState().setSearchMode("podcast");
+    useActionStore.getState().podcastHot();
+  } else if (item.kind === "local" || item.kind === "guide" || item.kind === "library") {
+    // Dead code: no receivers for local/guide/library clicks
   } else {
-    window.dispatchEvent(new CustomEvent("mineradio-home-search", { detail: { query: item.query || item.title || "" } }));
+    useActionStore.getState().homeSearch(item.query || item.title || "");
   }
 }
 

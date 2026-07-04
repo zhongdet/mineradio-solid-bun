@@ -1,5 +1,6 @@
 import { createEffect } from "solid-js";
-import { loadBindings, HOTKEY_STORE_KEY } from "../components/panels/HotkeyModal";
+import { loadBindings } from "../components/panels/HotkeyModal";
+import { useActionStore } from "../stores/actionStore";
 
 const HOTKEY_ACTIONS = [
   { key: 'togglePlay', label: '播放 / 暂停', category: '播放', local: 'Space', global: 'Ctrl+Alt+Space' },
@@ -69,37 +70,16 @@ export function useHotkeys() {
   }
 
   function dispatchHotkey(actionKey: string) {
-    switch (actionKey) {
-      case "togglePlay":
-      case "prevTrack":
-      case "nextTrack":
-      case "volumeUp":
-      case "volumeDown":
-      case "toggleDesktopLyrics":
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
-      case "toggleFullscreen":
-        if (!document.fullscreenElement) {
-          document.documentElement.requestFullscreen().catch(() => {});
-        } else {
-          document.exitFullscreen().catch(() => {});
-        }
-        break;
-      case "goHome":
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
-      case "exitOrClose":
-        if (document.fullscreenElement) {
-          document.exitFullscreen().catch(() => {});
-        } else {
-          window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        }
-        break;
-      case "toggleLyricsPanel":
-      case "toggleFxPanel":
-      case "toggleImmersive":
-        window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail: actionKey }));
-        break;
+    if (actionKey === "toggleFullscreen") {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {});
+      } else {
+        document.exitFullscreen().catch(() => {});
+      }
+    } else if (actionKey === "exitOrClose" && document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else {
+      useActionStore.getState().hotkey(actionKey);
     }
   }
 

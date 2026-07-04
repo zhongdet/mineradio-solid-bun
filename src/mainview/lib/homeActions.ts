@@ -9,6 +9,7 @@ import { usePlayback } from "../stores/playbackStore";
 import { useSettings } from "../stores/settingsStore";
 import { useShelf } from "../stores/shelfStore";
 import { useUser } from "../stores/userStore";
+import { useActionStore } from "../stores/actionStore";
 import { rpc } from "./api";
 import { startVisualGuide } from "./startupGuides";
 import { setPeek } from "./peek";
@@ -92,16 +93,14 @@ function openPlaylistPanelTab(tab: string, preserve?: boolean) {
   const playback = usePlayback();
   const mapped = tab === "podcasts" ? "podcasts" : tab === "playlists" ? "playlists" : "queue";
   playback.set("queueViewTab", mapped as any);
-  // Dispatch custom event so PlaylistPanel picks up the tab change
-  window.dispatchEvent(new CustomEvent("mineradio-playlist-tab", { detail: { tab: mapped } }));
+  useActionStore.getState().playlistTab(mapped);
   const panel = document.getElementById("playlist-panel");
   if (panel && preserve !== false) (panel as any).dataset.preserveTabOnOpen = "1";
   if (panel) setPeek(panel, true, "pl");
 }
 
 function runHomeSearch(query: string) {
-  // Dispatch search event so SearchArea can pick it up
-  window.dispatchEvent(new CustomEvent("mineradio-home-search", { detail: { query } }));
+  useActionStore.getState().homeSearch(query);
 }
 
 function songFromListenRecord(record: any) {
@@ -138,8 +137,7 @@ export function openHomeLibrary() {
   home.setHomeSuppressed(false);
   setHomeControlsLocked(false);
   openPlaylistPanelTab("playlists", true);
-  // Trigger playlist refresh
-  window.dispatchEvent(new CustomEvent("mineradio-do-refresh-playlists"));
+  useActionStore.getState().refreshPlaylists();
 }
 
 export function playHomeSong(index: number) {
@@ -248,8 +246,7 @@ async function playHomePrivateRadio() {
 
   const playlists = home.state.homeDiscoverState.playlists;
   if (playlists.length && playlists[0]?.id) {
-    // Load playlist into queue
-    window.dispatchEvent(new CustomEvent("mineradio-load-playlist", { detail: { id: playlists[0].id, name: playlists[0].name || "私人雷达" } }));
+    useActionStore.getState().loadPlaylist(playlists[0].id, playlists[0].name || "私人雷达");
     return;
   }
 

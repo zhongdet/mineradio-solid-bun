@@ -2,10 +2,11 @@ import { useAudio } from "../stores/audioStore";
 import { usePlayback } from "../stores/playbackStore";
 import { useVisual } from "../stores/visualStore";
 import { useLyrics } from "../stores/lyricsStore";
+import { useActionStore } from "../stores/actionStore";
 import { rpc, qqApi, proxyImageUrl } from "../lib/api";
 import { forcePlaybackControlsInteractive } from "../lib/uiControls";
 import { updateEmptyHomeVisibility, switchPlaybackVisualPreset } from "../lib/homeVisibility";
-import { createEffect, onCleanup } from "solid-js";
+import { createEffect } from "solid-js";
 
 interface PlayQueueAtOpts {
   context?: string;
@@ -24,35 +25,21 @@ export function useAudioPlayback() {
 
   let playQueueAtAbort: ReturnType<typeof setTimeout> | null = null;
 
-  // Listen for mineradio-hotkey events dispatched from BottomBar, SearchArea, etc.
+  // Register playback actions with actionStore
   createEffect(() => {
-    function onHotkey(e: Event) {
-      const detail = (e as CustomEvent).detail;
-      if (detail === "togglePlay") togglePlay();
-      else if (detail === "nextTrack") nextTrack();
-      else if (detail === "prevTrack") prevTrack();
-      else if (detail === "volumeUp") {
+    useActionStore.getState().register({
+      togglePlay,
+      nextTrack,
+      prevTrack,
+      volumeUp: () => {
         const v = Math.min(1, audio.state.targetVolume + 0.05);
         audio.setVolume(v);
-      } else if (detail === "volumeDown") {
+      },
+      volumeDown: () => {
         const v = Math.max(0, audio.state.targetVolume - 0.05);
         audio.setVolume(v);
-      } else if (detail === "goHome") {
-        window.dispatchEvent(new CustomEvent("mineradio-go-home"));
-      } else if (detail === "exitOrClose") {
-        window.dispatchEvent(new CustomEvent("mineradio-exit-or-close"));
-      } else if (detail === "toggleLyricsPanel") {
-        window.dispatchEvent(new CustomEvent("mineradio-toggle-lyrics-panel"));
-      } else if (detail === "toggleFxPanel") {
-        window.dispatchEvent(new CustomEvent("mineradio-toggle-fx-panel"));
-      } else if (detail === "toggleImmersive") {
-        window.dispatchEvent(new CustomEvent("mineradio-toggle-immersive"));
-      } else if (detail === "toggleDesktopLyrics") {
-        window.dispatchEvent(new CustomEvent("mineradio-toggle-desktop-lyrics"));
-      }
-    }
-    window.addEventListener("mineradio-hotkey", onHotkey);
-    onCleanup(() => window.removeEventListener("mineradio-hotkey", onHotkey));
+      },
+    });
   });
 
   // ── UI updaters (ported from legacy loadCoverFromUrl + setAlbumBackground) ──

@@ -2,6 +2,7 @@
 import { Component, Show, createSignal, createEffect, onCleanup } from "solid-js";
 import { useAuth } from "../../stores/authStore";
 import { useUser } from "../../stores/userStore";
+import { useActionStore } from "../../stores/actionStore";
 import { rpc } from "../../lib/api";
 import HotkeyModal from "./HotkeyModal";
 
@@ -11,11 +12,11 @@ const Modals: Component = () => {
   const auth = useAuth();
   const [showHotkeyModal, setShowHotkeyModal] = createSignal(false);
 
-  // Listen for hotkey modal open events
+  // Register hotkey modal open action
   createEffect(() => {
-    const handler = () => setShowHotkeyModal(true);
-    window.addEventListener("mineradio-open-hotkey-modal", handler);
-    onCleanup(() => window.removeEventListener("mineradio-open-hotkey-modal", handler));
+    useActionStore.getState().register({
+      openHotkeyModal: () => setShowHotkeyModal(true),
+    });
   });
 
   // ---- GSAP animation for modal open/close ----
@@ -162,7 +163,7 @@ const Modals: Component = () => {
           stopQrPoll();
           if (status) { status.textContent = '登录成功！'; status.className = 'scan'; }
           // Refresh login status after success
-          window.dispatchEvent(new CustomEvent("mineradio-refresh-login-status"));
+          useActionStore.getState().refreshLoginStatus();
           setTimeout(() => auth.hideModal(), 1200);
         } else if (data.code === 802) {
           // Scanned, waiting for confirmation
@@ -264,9 +265,9 @@ const Modals: Component = () => {
     const isQQ = auth.state.loginProvider === 'qq';
     const canOpenNeteaseWeb = !!(window as any).desktopWindow && typeof (window as any).desktopWindow.openNeteaseMusicLogin === 'function';
     if (isQQ) {
-      window.dispatchEvent(new CustomEvent("mineradio-open-web-login"));
+      useActionStore.getState().openWebLogin();
     } else if (canOpenNeteaseWeb) {
-      window.dispatchEvent(new CustomEvent("mineradio-open-web-login"));
+      useActionStore.getState().openWebLogin();
     } else {
       refreshQrForProvider();
     }
@@ -274,7 +275,7 @@ const Modals: Component = () => {
 
   function skipLoginAndFocusSearch() {
     closeLoginModal();
-    window.dispatchEvent(new CustomEvent("mineradio-home-search", { detail: { query: "" } }));
+    useActionStore.getState().homeSearch("");
   }
 
   function requestDualLoginMode() {
@@ -291,7 +292,7 @@ const Modals: Component = () => {
   }
 
   function submitQQCookieLogin() {
-    window.dispatchEvent(new CustomEvent("mineradio-submit-qq-cookie"));
+    useActionStore.getState().submitQQCookie();
   }
 
   function backdropClick(e: MouseEvent, modalType: string) {
@@ -320,7 +321,7 @@ const Modals: Component = () => {
           <div id="login-modal-desc" class="desc">使用 <b>网易云音乐 App</b> 扫码，可同步歌单、红心与播客。</div>
           <div id="qr-shell" class="qr-shell">
             <img id="qr-img" src="" alt="" />
-            <button id="qq-web-login-card" class="qq-login-mark" type="button" onClick={() => window.dispatchEvent(new CustomEvent("mineradio-open-web-login"))}><b>QQ</b><span>打开官方扫码窗口</span></button>
+            <button id="qq-web-login-card" class="qq-login-mark" type="button" onClick={() => useActionStore.getState().openWebLogin()}><b>QQ</b><span>打开官方扫码窗口</span></button>
           </div>
           <div id="qr-status">正在生成二维码…</div>
           <div id="qq-cookie-panel" class="qq-cookie-panel">
@@ -356,7 +357,7 @@ const Modals: Component = () => {
           <div class="btn-row">
             <button class="modal-btn" onClick={() => auth.hideModal()}>关闭</button>
             <button class="modal-btn primary" onClick={() => {
-              window.dispatchEvent(new CustomEvent("mineradio-logout"));
+              useActionStore.getState().logout();
               auth.hideModal();
             }}>退出当前平台</button>
           </div>

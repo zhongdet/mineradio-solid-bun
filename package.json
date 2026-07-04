@@ -13,8 +13,9 @@
     "build:canary": "vite build && electrobun build --env=canary"
   },
   "dependencies": {
+    "NeteaseCloudMusicApi": "^4.32.0",
     "electrobun": "1.18.1",
-    "NeteaseCloudMusicApi": "^4.32.0"
+    "zustand": "^5.0.14"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.1",

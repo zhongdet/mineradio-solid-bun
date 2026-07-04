@@ -42,7 +42,6 @@ const Splash: Component = () => {
       perf("home-revealed");
       document.body.classList.remove("splash-active");
       document.body.classList.remove("splash-revealing");
-      window.dispatchEvent(new CustomEvent("mineradio-reveal-idle-particles", { detail: { delay: 2400 } }));
       requestAnimationFrame(() => {
         updateEmptyHomeVisibility({ forceLoad: true });
         let homeShown = document.body.classList.contains("empty-home-active");

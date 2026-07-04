@@ -9,6 +9,7 @@ import { useUi } from "../../stores/uiStore";
 import { useVisual } from "../../stores/visualStore";
 import { useLyrics } from "../../stores/lyricsStore";
 import { useUser } from "../../stores/userStore";
+import { useActionStore } from "../../stores/actionStore";
 
 const BottomBar: Component = () => {
   const playback = usePlayback();
@@ -58,7 +59,7 @@ const BottomBar: Component = () => {
   }
 
   function hotkey(detail: string) {
-    window.dispatchEvent(new CustomEvent("mineradio-hotkey", { detail }));
+    useActionStore.getState().hotkey(detail);
   }
 
   const song = () => playback.state.currentSong;

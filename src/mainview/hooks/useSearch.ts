@@ -1,6 +1,7 @@
-import { createEffect, onCleanup } from "solid-js";
+import { createEffect } from "solid-js";
 import { useSearch } from "../stores/searchStore";
 import { usePlayback } from "../stores/playbackStore";
+import { useActionStore } from "../stores/actionStore";
 import { rpc, qqApi } from "../lib/api";
 
 export function useSearchHook() {
@@ -15,24 +16,13 @@ export function useSearchHook() {
     search.loadSearchHistory();
   });
 
-  // Listen for search events from SearchArea and homeActions
-  let searchEventHandler: ((e: Event) => void) | null = null;
-  let podcastHotHandler: ((e: Event) => void) | null = null;
+  // Register with actionStore so components can call actions directly
   createEffect(() => {
-    searchEventHandler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (detail?.query != null) {
-        if (detail.mode) search.setSearchMode(detail.mode);
-        doSearch(detail.query);
-      }
-    };
-    podcastHotHandler = () => loadPodcastHot();
-    window.addEventListener("mineradio-search", searchEventHandler);
-    window.addEventListener("mineradio-podcast-hot", podcastHotHandler);
-  });
-  onCleanup(() => {
-    if (searchEventHandler) window.removeEventListener("mineradio-search", searchEventHandler);
-    if (podcastHotHandler) window.removeEventListener("mineradio-podcast-hot", podcastHotHandler);
+    useActionStore.getState().register({
+      doSearch: (query, opts) => doSearch(query, opts),
+      loadPodcastHot,
+      setSearchMode: (mode) => setSearchMode(mode as any),
+    });
   });
 
   async function doSearch(query: string, opts: { autoPlayFirst?: boolean } = {}) {
