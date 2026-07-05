@@ -144,6 +144,21 @@ export async function startCombinedServer() {
         }
       }
 
+      // Wallpaper overlay state
+      if (pathname === "/api/wallpaper-state") {
+        const state = (globalThis as any).__getWallpaperState?.() || { enabled: false };
+        return json(state);
+      }
+      if (pathname === "/api/wallpaper-update" && req.method === "POST") {
+        try {
+          const patch = await req.json();
+          (globalThis as any).__setWallpaperState?.(patch);
+          return json({ ok: true });
+        } catch {
+          return json({ error: "invalid body" }, 400);
+        }
+      }
+
       // RPC
       if (pathname === "/api/rpc" && req.method === "POST") {
         const body = await req.json();

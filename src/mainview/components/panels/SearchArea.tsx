@@ -124,7 +124,7 @@ const SearchArea: Component = () => {
   }
 
   return (
-    <div id="search-area" classList={{ "has-results": (query().trim().length > 0 || search.state.history.length > 0) && isFocused() }}>
+    <div id="search-area" classList={{ "has-results": isFocused() && (query().trim().length > 0 || search.state.history.length > 0) }}>
       <div id="search-stack">
         <form id="search-box" onSubmit={handleSubmit}>
           <svg id="search-icon" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -148,7 +148,12 @@ const SearchArea: Component = () => {
                 }
               }
             }}
-            onBlur={() => setIsFocused(false)}
+            onBlur={(e) => {
+              const container = document.getElementById("search-area");
+              if (container && !container.contains(e.relatedTarget as Node)) {
+                setIsFocused(false);
+              }
+            }}
           />
         </form>
 
@@ -173,7 +178,14 @@ const SearchArea: Component = () => {
           </For>
         </div>
 
-        <div id="search-results" classList={{ show: (query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading)) || (search.state.history.length > 0 && isFocused()) }}>
+        <div id="search-results" tabindex={0} classList={{ show: isFocused() && ((query().trim().length > 0 && (search.state.results.length > 0 || search.state.podcastResults.length > 0 || search.state.loading)) || search.state.history.length > 0) }}
+          onFocus={() => setIsFocused(true)}
+          onBlur={(e) => {
+            const container = document.getElementById("search-area");
+            if (container && !container.contains(e.relatedTarget as Node)) {
+              setIsFocused(false);
+            }
+          }}>
           <Show when={search.state.loading}>
             <div class="search-loading">搜索中...</div>
           </Show>

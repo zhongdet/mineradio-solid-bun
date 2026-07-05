@@ -160,8 +160,8 @@ const BottomBar: Component = () => {
                 </Show>
               </div>
               <div class="control-meta">
-                <div id="control-title" class="control-title">{song()?.name || ""}</div>
-                <div id="control-artist" class="control-artist">{song()?.artist || ""}</div>
+                <div id="control-title" class="control-title" onClick={() => useActionStore.getState().openTrackDetail('song')} title="歌曲详情">{song()?.name || ""}</div>
+                <div id="control-artist" class="control-artist" onClick={() => useActionStore.getState().openTrackDetail('artist')} title="歌手详情">{song()?.artist || ""}</div>
               </div>
             </div>
             <div id="quality-control" class="quality-control" style={{ display: song() ? "" : "none" }}>

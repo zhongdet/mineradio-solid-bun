@@ -5,17 +5,26 @@ import { useUser } from "../../stores/userStore";
 import { useActionStore } from "../../stores/actionStore";
 import { rpc } from "../../lib/api";
 import HotkeyModal from "./HotkeyModal";
+import TrackDetail from "./TrackDetail";
+import UpdateModal from "../panels/UpdateModal";
+import CoverCropModal from "../panels/CoverCropModal";
 
 declare const gsap: any;
 
 const Modals: Component = () => {
   const auth = useAuth();
   const [showHotkeyModal, setShowHotkeyModal] = createSignal(false);
+  const [trackDetailType, setTrackDetailType] = createSignal<"song" | "artist" | null>(null);
+  const [showUpdateModal, setShowUpdateModal] = createSignal(false);
+  const [coverCropData, setCoverCropData] = createSignal<{ img: HTMLImageElement; dataUrl: string } | null>(null);
 
   // Register hotkey modal open action
   createEffect(() => {
     useActionStore.getState().register({
       openHotkeyModal: () => setShowHotkeyModal(true),
+      openTrackDetail: (type) => setTrackDetailType(type),
+      openUpdateModal: () => setShowUpdateModal(true),
+      openCoverCrop: (img: HTMLImageElement, dataUrl: string) => setCoverCropData({ img, dataUrl }),
     });
   });
 
@@ -367,6 +376,29 @@ const Modals: Component = () => {
       {/* Hotkey Modal */}
       <Show when={showHotkeyModal()}>
         <HotkeyModal onClose={() => setShowHotkeyModal(false)} />
+      </Show>
+
+      {/* Track Detail Modal */}
+      <Show when={trackDetailType()}>
+        <TrackDetail type={trackDetailType()!} onClose={() => setTrackDetailType(null)} />
+      </Show>
+
+      {/* Update Modal */}
+      <Show when={showUpdateModal()}>
+        <UpdateModal onClose={() => setShowUpdateModal(false)} />
+      </Show>
+
+      {/* Cover Crop Modal */}
+      <Show when={coverCropData()}>
+        <CoverCropModal
+          img={coverCropData()!.img}
+          dataUrl={coverCropData()!.dataUrl}
+          onClose={() => setCoverCropData(null)}
+          onCommit={(canvas) => {
+            // TODO: commit custom cover to song
+            setCoverCropData(null);
+          }}
+        />
       </Show>
     </>
   );

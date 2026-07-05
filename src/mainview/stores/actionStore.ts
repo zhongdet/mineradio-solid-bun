@@ -34,6 +34,9 @@ interface ActionCallbacks {
 
   // UI
   openHotkeyModal: () => void;
+  openTrackDetail: (type: "song" | "artist") => void;
+  openUpdateModal: () => void;
+  openCoverCrop: (img: HTMLImageElement, dataUrl: string) => void;
   setPlaylistTab: (tab: string) => void;
   homeSearch: (query: string) => void;
 }
@@ -79,6 +82,7 @@ export interface ActionStoreState {
   // UI
   revealIdleParticles: (delay: number) => void;
   openHotkeyModal: () => void;
+  openTrackDetail: (type: "song" | "artist") => void;
 }
 
 let callbacks: Partial<ActionCallbacks> = {};
@@ -158,4 +162,7 @@ export const useActionStore = create<ActionStoreState>((_set) => ({
     // Dead code — no receivers. Kept as no-op for backward compat.
   },
   openHotkeyModal: () => callbacks.openHotkeyModal?.(),
+  openTrackDetail: (type) => callbacks.openTrackDetail?.(type),
+  openUpdateModal: () => callbacks.openUpdateModal?.(),
+  openCoverCrop: (img, dataUrl) => callbacks.openCoverCrop?.(img, dataUrl),
 }));

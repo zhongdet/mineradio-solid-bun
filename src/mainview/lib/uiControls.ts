@@ -92,10 +92,8 @@ export function forcePlaybackControlsInteractive() {
     const settings = useSettings();
     if (bar) {
       (bar as HTMLElement).style.pointerEvents = "";
-      if (!settings.state.controlsAutoHide) {
-        bar.classList.add("visible");
-        bar.classList.remove("soft-hidden");
-      }
+      bar.classList.add("visible");
+      bar.classList.remove("soft-hidden");
     }
     ["play-btn", "prev-btn", "next-btn", "mini-queue-btn", "heart-btn", "play-mode-btn", "collect-btn"].forEach((id) => {
       const btn = document.getElementById(id) as HTMLButtonElement | null;
@@ -104,7 +102,7 @@ export function forcePlaybackControlsInteractive() {
       btn.classList.remove("busy");
     });
     updateControlsChromeState();
-    if (bar && bar.classList.contains("visible") && settings.state.controlsAutoHide && !settings.state.controlsHovering) scheduleControlsHide(220);
+    if (bar && settings.state.controlsAutoHide && !settings.state.controlsHovering) scheduleControlsHide(220);
   } catch (e) {
     console.warn("[PlaybackControlsRestore]", e);
   }

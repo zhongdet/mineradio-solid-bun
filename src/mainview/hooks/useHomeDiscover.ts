@@ -84,21 +84,44 @@ export function useHomeDiscover() {
     home.set("homeWeatherRadioState", { ...home.state.homeWeatherRadioState, loading: true });
 
     try {
-      // Mock weather/radio data - in production, call weather API
-      const weather = {
-        city,
-        temperature: 22,
-        condition: "晴",
-        humidity: 60,
-      };
+      // Auto-detect city if not set
+      if (!city || city === "上海") {
+        try {
+          const locRes = await fetch("/api/weather/ip-location");
+          const loc = await locRes.json();
+          if (loc?.city) {
+            home.setWeatherCity(loc.city);
+            localStorage.setItem(HOME_WEATHER_CITY_KEY, loc.city);
+          }
+        } catch { /* ignore */ }
+      }
 
-      home.set("homeWeatherRadioState", {
-        ...home.state.homeWeatherRadioState,
-        loading: false,
-        loaded: true,
-        weather,
-        updatedAt: Date.now(),
-      });
+      // Fetch weather radio
+      const params = new URLSearchParams();
+      // Use default Shanghai coords for now; could add geolocation later
+      params.set("lat", "31.23");
+      params.set("lon", "121.47");
+      params.set("timezone", "Asia/Shanghai");
+
+      const res = await fetch(`/api/weather/radio?${params}`);
+      const data = await res.json();
+
+      if (data?.ok) {
+        home.set("homeWeatherRadioState", {
+          ...home.state.homeWeatherRadioState,
+          loading: false,
+          loaded: true,
+          weather: data.weather,
+          radio: data.radio,
+          updatedAt: Date.now(),
+        });
+      } else {
+        home.set("homeWeatherRadioState", {
+          ...home.state.homeWeatherRadioState,
+          loading: false,
+          error: data?.error || "Weather load failed",
+        });
+      }
     } catch (err) {
       console.error("Weather load failed:", err);
       home.set("homeWeatherRadioState", {

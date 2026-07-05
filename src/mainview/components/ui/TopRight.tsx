@@ -3,7 +3,9 @@ import { Component, Show } from "solid-js";
 import { useAuth } from "../../stores/authStore";
 import { useHome } from "../../stores/homeStore";
 import { useSettings } from "../../stores/settingsStore";
+import { useActionStore } from "../../stores/actionStore";
 import { updateEmptyHomeVisibility } from "../../lib/homeVisibility";
+import UpdateEntry from "./UpdateEntry";
 
 const TopRight: Component = () => {
   const auth = useAuth();
@@ -24,6 +26,7 @@ const TopRight: Component = () => {
 
   return (
     <div id="top-right">
+      <UpdateEntry onClick={() => useActionStore.getState().openUpdateModal()} />
       <button
         id="user-capsule-hide-btn"
         class="user-capsule-hide-btn"

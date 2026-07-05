@@ -19,11 +19,14 @@ import { useLyricsHook } from "./hooks/useLyrics";
 import { useHomeDiscover } from "./hooks/useHomeDiscover";
 import { usePerformance } from "./hooks/usePerformance";
 import { useDesktopLyrics } from "./hooks/useDesktopLyrics";
+import { useDesktopWallpaper } from "./hooks/useDesktopWallpaper";
 import { useIdleGuide } from "./hooks/useIdleGuide";
 import { useControlGlass } from "./hooks/useControlGlass";
 import { handleHomeTileClick } from "./lib/homeDiscover";
 import { playHomeSong, playHomeRecent } from "./lib/homeActions";
 import { useActionStore } from "./stores/actionStore";
+import { useSettings } from "./stores/settingsStore";
+import { setControlsHidden, scheduleControlsHide, revealBottomControls, wakeBottomHandle, updateControlsChromeState, isBottomControlsSuppressedForShelf } from "./lib/uiControls";
 
 const App: Component = () => {
   // Initialize all hooks — they self-register via createEffect
@@ -38,6 +41,7 @@ const App: Component = () => {
   const { refreshHomeDiscover } = useHomeDiscover();
   usePerformance();
   useDesktopLyrics();
+  useDesktopWallpaper();
   useIdleGuide();
   useControlGlass();
 
@@ -63,6 +67,39 @@ const App: Component = () => {
       playHomeSong: (index) => playHomeSong(index),
       playHomeRecent: (record) => playHomeRecent(record),
     });
+
+    // Init auto-hide for bottom bar: mouse hover + click handle
+    const bar = document.getElementById("bottom-bar");
+    const handle = document.getElementById("bottom-handle");
+    const settings = useSettings();
+
+    function enterControls() {
+      settings.setControlsHovering(true);
+      wakeBottomHandle();
+      setControlsHidden(false);
+    }
+    function leaveControls() {
+      settings.setControlsHovering(false);
+      scheduleControlsHide(70);
+      wakeBottomHandle(900);
+    }
+
+    bar?.addEventListener("mouseenter", enterControls);
+    bar?.addEventListener("mouseleave", leaveControls);
+    if (handle) {
+      handle.addEventListener("mouseenter", () => {
+        settings.setControlsHovering(true);
+        revealBottomControls(900);
+      });
+      handle.addEventListener("mouseleave", leaveControls);
+      handle.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (isBottomControlsSuppressedForShelf()) return;
+        revealBottomControls(900);
+      });
+    }
+    updateControlsChromeState();
   });
 
   return (
