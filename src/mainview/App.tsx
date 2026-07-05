@@ -22,6 +22,7 @@ import { useDesktopLyrics } from "./hooks/useDesktopLyrics";
 import { useDesktopWallpaper } from "./hooks/useDesktopWallpaper";
 import { useIdleGuide } from "./hooks/useIdleGuide";
 import { useControlGlass } from "./hooks/useControlGlass";
+import { useThemeColors } from "./hooks/useThemeColors";
 import { handleHomeTileClick } from "./lib/homeDiscover";
 import { playHomeSong, playHomeRecent } from "./lib/homeActions";
 import { useActionStore } from "./stores/actionStore";
@@ -44,6 +45,7 @@ const App: Component = () => {
   useDesktopWallpaper();
   useIdleGuide();
   useControlGlass();
+  useThemeColors();
 
   // Register playback bridge so homeActions can call playQueueAt
   registerPlaybackBridge({
