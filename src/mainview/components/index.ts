@@ -17,3 +17,5 @@ export { default as StatusChips } from "./ui/StatusChips";
 export { default as VisualGuide } from "./ui/VisualGuide";
 export { default as HiddenInputs } from "./ui/HiddenInputs";
 export { default as Overlays } from "./ui/Overlays";
+export { default as DesktopTitlebar } from "./ui/DesktopTitlebar";
+export { default as FullscreenDiyZone } from "./ui/FullscreenDiyZone";

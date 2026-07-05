@@ -65,13 +65,16 @@ const BottomBar: Component = () => {
   const song = () => playback.state.currentSong;
   const isLiked = () => song() ? !!user.state.likedSongMap[String(song()!.id || song()!.mid)] : false;
 
-  const playModeIcon = () => {
-    switch (playback.state.playMode) {
-      case "shuffle": return "🔀";
-      case "single": return "🔂";
-      default: return "🔁";
-    }
-  };
+const playModePaths = () => {
+  switch (playback.state.playMode) {
+    case "shuffle":
+      return <><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></>;
+    case "single":
+      return <><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><path d="M12 9v6"/><path d="M10.5 10.5 12 9l1.5 1.5"/></>;
+    default:
+      return <><path d="M17 2l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 22l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></>;
+  }
+};
 
   return (
     <>
@@ -177,9 +180,11 @@ const BottomBar: Component = () => {
             </button>
           </div>
           <div class="control-cluster transport">
-            <button id="play-mode-btn" class="ctrl-btn" onClick={() => playback.cyclePlayMode()} title="播放顺序">
-              <span>{playModeIcon()}</span>
-            </button>
+<button id="play-mode-btn" classList={{ "ctrl-btn": true, active: playback.state.playMode !== "loop" }} data-mode={playback.state.playMode} onClick={() => playback.cyclePlayMode()} title="播放顺序">
+  <svg id="play-mode-icon" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+    {playModePaths()}
+  </svg>
+</button>
             <button id="prev-btn" class="ctrl-btn" onClick={() => hotkey("prevTrack")} title="上一首">
               <svg width="18" height="18" fill="currentColor" viewBox="0 0 24 24"><path d="M6 6h2v12H6zm3.5 6l8.5 6V6z"/></svg>
             </button>
@@ -204,7 +209,7 @@ const BottomBar: Component = () => {
             </button>
             <div id="volume-control" class="volume-control">
               <button id="volume-btn" class="ctrl-btn" title="音量 / 静音">
-                <svg id="volume-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+                <svg id="volume-icon" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15 9.5a4 4 0 0 1 0 5"/></svg>
               </button>
               <div class="volume-popover" onClick={(e) => e.stopPropagation()}>
                 <input id="volume-slider" type="range" min="0" max="1" step="0.01" value={audio.state.volume} onInput={handleVolumeInput} aria-label="音量" />

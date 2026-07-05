@@ -94,6 +94,8 @@ export function useSettings() {
       const next = !settings.diyPlayerMode;
       setSettings("diyPlayerMode", next);
       setBooleanPreference(DIY_MODE_STORE_KEY, next);
+      document.documentElement.classList.toggle("diy-mode-preload", next);
+      document.documentElement.classList.toggle("simple-mode-preload", !next);
       document.body.classList.toggle("diy-mode", next);
       document.body.classList.toggle("simple-mode", !next);
       if (!next) {
